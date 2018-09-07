@@ -21,13 +21,15 @@
 # the License.
 
 """ Libraries to connect XR gRPC server """
-
+import sys,os
+SCRIPT_DIR=os.path.dirname(os.path.realpath(__file__))
+sys.path.append(SCRIPT_DIR+"/genpy")
 import grpc
-from . import ems_grpc_pb2
-from . import json_format
-from . import ems_grpc_pb2
-from . import telemetry_pb2
-from grpc.beta import implementations
+from mdt_grpc_dialin import mdt_grpc_dialin_pb2, mdt_grpc_dialin_pb2_grpc
+# Import gRPC libraries
+from google.protobuf.json_format import MessageToJson
+import telemetry_pb2
+import grpc
 
 class CiscoGRPCClient(object):
     """This class creates grpc calls using python.
@@ -50,16 +52,16 @@ class CiscoGRPCClient(object):
         """
         if creds != None:
             self._target = '%s:%d' % (host, port)
-            self._creds = implementations.ssl_channel_credentials(creds)
+            self._creds = grpc.ssl_channel_credentials(creds)
             self._options = options
             channel = grpc.secure_channel(
                 self._target, self._creds, (('grpc.ssl_target_name_override', self._options,),))
-            self._channel = implementations.Channel(channel)
+            self._channel = grpc.Channel(channel)
         else:
             self._host = host
             self._port = port
-            self._channel = implementations.insecure_channel(self._host, self._port)
-        self._stub = ems_grpc_pb2.beta_create_gRPCConfigOper_stub(self._channel)
+            self._channel = grpc.insecure_channel(str(self._host)+":"+ str(self._port))
+        self._stub = mdt_grpc_dialin_pb2_grpc.gRPCConfigOperStub(self._channel)
         self._timeout = float(timeout)
         self._metadata = [('username', user), ('password', password)]
 
@@ -80,7 +82,7 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: Response stream object
         """
-        message = ems_grpc_pb2.ConfigGetArgs(yangpathjson=path)
+        message = mdt_grpc_dialin_pb2.ConfigGetArgs(yangpathjson=path)
         responses = self._stub.GetConfig(message, self._timeout, metadata=self._metadata)
         objects, err = '', ''
         for response in responses:
@@ -95,7 +97,7 @@ class CiscoGRPCClient(object):
             :return: Returns discrete values emitted by telemetry stream
             :rtype: JSON formatted string
         """
-        sub_args = ems_grpc_pb2.CreateSubsArgs(ReqId=1, encode=3, subidstr=sub_id)
+        sub_args = mdt_grpc_dialin_pb2.CreateSubsArgs(ReqId=1, encode=3, subidstr=sub_id)
         stream = self._stub.CreateSubs(sub_args, timeout=self._timeout, metadata=self._metadata)
         for segment in stream:
             if not unmarshal:
@@ -105,7 +107,7 @@ class CiscoGRPCClient(object):
                 telemetry_pb = telemetry_pb2.Telemetry()
                 telemetry_pb.ParseFromString(segment.data)
                 # Return in JSON format instead of protobuf.
-                yield json_format.MessageToJson(telemetry_pb)
+                yield MessageToJson(telemetry_pb)
 
 
     def connectivityhandler(self, callback):
@@ -122,7 +124,7 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: Response object
         """
-        message = ems_grpc_pb2.ConfigArgs(yangjson=yangjson)
+        message = mdt_grpc_dialin_pb2.ConfigArgs(yangjson=yangjson)
         response = self._stub.MergeConfig(message, self._timeout, metadata=self._metadata)
         return response
 
@@ -133,7 +135,7 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: Response object
         """
-        message = ems_grpc_pb2.ConfigArgs(yangjson=yangjson)
+        message = mdt_grpc_dialin_pb2.ConfigArgs(yangjson=yangjson)
         response = self._stub.DeleteConfig(message, self._timeout, metadata=self._metadata)
         return response
 
@@ -144,7 +146,7 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: Response object
         """
-        message = ems_grpc_pb2.ConfigArgs(yangjson=yangjson)
+        message = mdt_grpc_dialin_pb2.ConfigArgs(yangjson=yangjson)
         response = self._stub.ReplaceConfig(message, self._timeout, metadata=self._metadata)
         return response
     def getoper(self, path):
@@ -154,7 +156,7 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: Response stream object
         """
-        message = ems_grpc_pb2.GetOperArgs(yangpathjson=path)
+        message = mdt_grpc_dialin_pb2.GetOperArgs(yangpathjson=path)
         responses = self._stub.GetOper(message, self._timeout, metadata=self._metadata)
         objects, err = '', ''
         for response in responses:
@@ -169,7 +171,7 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: str
         """
-        message = ems_grpc_pb2.CliConfigArgs(cli=cli)
+        message = mdt_grpc_dialin_pb2.CliConfigArgs(cli=cli)
         response = self._stub.CliConfig(message, self._timeout, metadata=self._metadata)
         return response
 
@@ -181,9 +183,9 @@ class CiscoGRPCClient(object):
             :rtype: str
         """
         if not cli:
-            message = ems_grpc_pb2.CommitReplaceArgs(yangjson=yangjson)
+            message = mdt_grpc_dialin_pb2.CommitReplaceArgs(yangjson=yangjson)
         else:
-            message = ems_grpc_pb2.CommitReplaceArgs(cli=cli)
+            message = mdt_grpc_dialin_pb2.CommitReplaceArgs(cli=cli)
         response = self._stub.CommitReplace(message, self._timeout, metadata=self._metadata)
         return response
 
@@ -194,8 +196,8 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: str
         """
-        stub = ems_grpc_pb2.beta_create_gRPCExec_stub(self._channel)
-        message = ems_grpc_pb2.ShowCmdArgs(cli=cli)
+        stub = mdt_grpc_dialin_pb2_grpc.gRPCExecStub(self._channel)
+        message = mdt_grpc_dialin_pb2.ShowCmdArgs(cli=cli)
         responses = stub.ShowCmdTextOutput(message, self._timeout, metadata=self._metadata)
         objects, err = '', ''
         for response in responses:
@@ -210,8 +212,8 @@ class CiscoGRPCClient(object):
             :return: Return the response object
             :rtype: str
         """
-        stub = ems_grpc_pb2.beta_create_gRPCExec_stub(self._channel)
-        message = ems_grpc_pb2.ShowCmdArgs(cli=cli)
+        stub = mdt_grpc_dialin_pb2_grpc.gRPCExecStub(self._channel)
+        message = mdt_grpc_dialin_pb2.ShowCmdArgs(cli=cli)
         responses = stub.ShowCmdJSONOutput(message, self._timeout, metadata=self._metadata)
         objects, err = '', ''
         for response in responses:

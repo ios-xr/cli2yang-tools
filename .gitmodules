@@ -1,0 +1,6 @@
+[submodule "iosxr_grpc/protos/bigmuddy-network-telemetry-proto"]
+	path = iosxr_grpc/protos/bigmuddy-network-telemetry-proto
+	url = https://github.com/cisco/bigmuddy-network-telemetry-proto
+[submodule "iosxr_grpc/bigmuddy-network-telemetry-proto"]
+	path = iosxr_grpc/bigmuddy-network-telemetry-proto
+	url = https://github.com/cisco/bigmuddy-network-telemetry-proto
