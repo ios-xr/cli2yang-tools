@@ -1,5 +1,5 @@
 # cli2yang-tools
-Simple tools to convert existing CLI to YANG formats (XML, JSON)
+Simple tools to convert existing CLI configurations to YANG formats (XML, JSON)
 
 ## cli2xmljson.py
 The purpose of the script cli2xmljson.py is to be able to convert any existing CLI configuration on an IOS-XR router (tested on release >6.4.1)
