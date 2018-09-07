@@ -130,7 +130,7 @@ class YangCLIClient(object):
             response_dict=xmltodict.parse(str(response))
             self.config_dict=response_dict['rpc-reply']['data']
             for key in list(self.config_dict.keys()):
-                if((key in self.skip_model) or (key in list(self.model_url_name_map.keys()))):
+                if key in self.skip_model:
                     self.config_dict.pop(key)
             self.nc_dict.update({"config" : self.config_dict})
 
@@ -166,16 +166,20 @@ class YangCLIClient(object):
         try:
             for key in list(self.config_dict.keys()):
                 if isinstance(self.config_dict[key], list):
-                    for item in self.config_dict[key]:
+                    for idx,item in enumerate(self.config_dict[key]):
                         if "@xmlns" in list(item.keys()):
                             if item["@xmlns"] in list(self.model_url_name_map.keys()):
                                 yangpath= self.model_url_name_map[item["@xmlns"]]["module"][0]
                                 self.grpc_getparam_list.append(yangpath+":"+key)
+                            else:
+                                self.config_dict[key].pop(idx)
                 else:
                     if self.config_dict[key]["@xmlns"] in list(self.model_url_name_map.keys()):
                         if "@xmlns" in list(self.config_dict[key].keys()):
                             yangpath=self.model_url_name_map[self.config_dict[key]["@xmlns"]]["module"][0]
                             self.grpc_getparam_list.append(yangpath+":"+key)
+                    else:
+                        self.config_dict.pop(key)
 
         except Exception as e:
             print("Failed to extract gRPC params, error: "+str(e))
