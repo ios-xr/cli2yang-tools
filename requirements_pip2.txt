@@ -1,3 +1,6 @@
 grpcio==1.7.0
 grpcio-tools==1.7.0
 googleapis-common-protos
+xmltodict
+ncclient
+lxml

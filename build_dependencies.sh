@@ -7,9 +7,12 @@ if [[ $(/usr/bin/id -u) -ne 0 ]]; then
     exit
 fi
 
-apt-get update && apt-get install -y python-pip && pip2 install --upgrade pip
+apt-get update && apt-get install -y python-pip python3-pip && \
+        pip2 install --upgrade pip && \
+            pip3 install --upgrade pip
 
-pip2 install -r ${SCRIPT_DIR}/requirements.txt
+pip2 install -r ${SCRIPT_DIR}/requirements_pip2.txt
+pip3 install -r ${SCRIPT_DIR}/requirements_pip3.txt
 
 
 # Removing old bindings

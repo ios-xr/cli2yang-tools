@@ -10,7 +10,11 @@ import json
 import xmltodict
 from pprint import pprint
 import pdb
-from urllib.parse import parse_qs, urlparse
+try:
+    from urllib.parse import urlparse, parse_qs
+except ImportError:
+     from urlparse import urlparse, parse_qs
+
 import argparse
 
 sys.path.append("./iosxr_grpc")
