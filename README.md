@@ -235,8 +235,10 @@ admin@devbox:cli2yang-tools$
 
 ### Verify the files created
 
-The XML file created by the script ends up looking something like:
-Use this file to directly do a config-merge/config-replace over netconf:
+The XML file created by the script ends up looking something like:  
+
+(Use this file to directly do a config-merge/config-replace over netconf).
+
 
 ```xml
 admin@devbox:cli2yang-tools$ cat yang_nc.xml 
@@ -940,7 +942,10 @@ admin@devbox:cli2yang-tools$ cat yang_nc.xml
 ```
 
 
-Similarly, the corresponding json file created is:
+Similarly, the corresponding json file created is:  
+(Use this file for configuration over gRPC)
+
+
 
 ```json
 admin@devbox:cli2yang-tools$ cat yang_grpc.json 
