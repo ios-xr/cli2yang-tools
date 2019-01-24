@@ -1,4 +1,5 @@
 grpcio==1.7.0
 xmltodict
+xmldiff
 ncclient
 lxml

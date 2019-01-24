@@ -1,0 +1,1202 @@
+	<lldp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ethernet-lldp-cfg">
+		<enable>true</enable>
+	</lldp>
+	<lldp xmlns="http://openconfig.net/yang/lldp">
+		<config>
+			<enabled>true</enabled>
+		</config>
+	</lldp>
+	<aaa xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-lib-cfg">
+		<usernames xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-locald-cfg">
+			<username>
+				<ordering-index>0</ordering-index>
+				<name>vagrant</name>
+				<usergroup-under-usernames>
+					<usergroup-under-username>
+						<name>root-lr</name>
+					</usergroup-under-username>
+					<usergroup-under-username>
+						<name>cisco-support</name>
+					</usergroup-under-username>
+				</usergroup-under-usernames>
+				<secret>$1$FTjI$nxqpDLAdVH1E3agGiVOdT0</secret>
+			</username>
+		</usernames>
+	</aaa>
+	<ssh xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-crypto-ssh-cfg">
+		<server>
+			<v2></v2>
+			<vrf-table>
+				<vrf>
+					<vrf-name>default</vrf-name>
+					<enable></enable>
+				</vrf>
+			</vrf-table>
+			<netconf-vrf-table>
+				<vrf>
+					<vrf-name>default</vrf-name>
+					<enable></enable>
+				</vrf>
+			</netconf-vrf-table>
+		</server>
+	</ssh>
+	<mpls-te xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-mpls-te-cfg">
+		<enable-traffic-engineering></enable-traffic-engineering>
+		<interfaces>
+			<interface>
+				<interface-name>FourHundredGigE0/0/0/8</interface-name>
+				<lcac>
+					<enable></enable>
+				</lcac>
+			</interface>
+			<interface>
+				<interface-name>FourHundredGigE0/0/0/9</interface-name>
+				<lcac>
+					<enable></enable>
+				</lcac>
+			</interface>
+			<interface>
+				<interface-name>FourHundredGigE0/0/0/12</interface-name>
+				<lcac>
+					<enable></enable>
+				</lcac>
+			</interface>
+			<interface>
+				<interface-name>FourHundredGigE0/0/0/13</interface-name>
+				<lcac>
+					<enable></enable>
+				</lcac>
+			</interface>
+		</interfaces>
+	</mpls-te>
+	<ospf xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-ospf-cfg">
+		<processes>
+			<process>
+				<process-name>1</process-name>
+				<default-vrf>
+					<router-id>2.2.2.2</router-id>
+					<af>
+						<af-name>ipv4</af-name>
+						<saf-name>unicast</saf-name>
+					</af>
+					<area-addresses>
+						<area-area-id>
+							<area-id>0</area-id>
+							<mpls-traffic-eng></mpls-traffic-eng>
+							<name-scopes>
+								<name-scope>
+									<interface-name>Loopback0</interface-name>
+								</name-scope>
+								<name-scope>
+									<interface-name>FourHundredGigE0/0/0/8</interface-name>
+								</name-scope>
+								<name-scope>
+									<interface-name>FourHundredGigE0/0/0/9</interface-name>
+								</name-scope>
+								<name-scope>
+									<interface-name>FourHundredGigE0/0/0/12</interface-name>
+								</name-scope>
+								<name-scope>
+									<interface-name>FourHundredGigE0/0/0/13</interface-name>
+								</name-scope>
+							</name-scopes>
+						</area-area-id>
+					</area-addresses>
+					<mpls>
+						<mpls-router-id>
+							<interface-name>Loopback0</interface-name>
+						</mpls-router-id>
+					</mpls>
+				</default-vrf>
+			</process>
+		</processes>
+	</ospf>
+	<netconf-yang xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-man-netconf-cfg">
+		<agent>
+			<ssh>
+				<enable></enable>
+			</ssh>
+		</agent>
+	</netconf-yang>
+	<interface-configurations xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ifmgr-cfg">
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>Loopback0</interface-name>
+			<interface-virtual></interface-virtual>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>12.1.1.1</address>
+						<netmask>255.255.255.255</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>Loopback100</interface-name>
+			<interface-virtual></interface-virtual>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>13.1.1.1</address>
+						<netmask>255.255.255.255</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/24</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/25</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/26</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/27</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/28</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/29</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/30</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/31</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/32</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/33</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/34</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>HundredGigE0/0/0/35</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>MgmtEth0/RP0/CPU0/0</interface-name>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<dhcp></dhcp>
+				</addresses>
+			</ipv4-network>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/0</interface-name>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>17.1.1.20</address>
+						<netmask>255.255.255.0</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+			<ipv6-neighbor xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-nd-cfg">
+				<ra-unicast></ra-unicast>
+			</ipv6-neighbor>
+			<ipv6-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-ma-cfg">
+				<addresses>
+					<auto-configuration>
+						<enable></enable>
+					</auto-configuration>
+				</addresses>
+			</ipv6-network>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/1</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/2</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/3</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/4</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/5</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/6</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/7</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/8</interface-name>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>19.1.1.10</address>
+						<netmask>255.255.255.0</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+			<ipv6-neighbor xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-nd-cfg">
+				<ra-unicast></ra-unicast>
+			</ipv6-neighbor>
+			<ipv6-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-ma-cfg">
+				<addresses>
+					<auto-configuration>
+						<enable></enable>
+					</auto-configuration>
+				</addresses>
+			</ipv6-network>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/9</interface-name>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>18.1.1.10</address>
+						<netmask>255.255.255.0</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+			<ipv6-neighbor xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-nd-cfg">
+				<ra-unicast></ra-unicast>
+			</ipv6-neighbor>
+			<ipv6-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-ma-cfg">
+				<addresses>
+					<auto-configuration>
+						<enable></enable>
+					</auto-configuration>
+				</addresses>
+			</ipv6-network>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/10</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/11</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/12</interface-name>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>15.1.1.20</address>
+						<netmask>255.255.255.0</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+			<ipv6-neighbor xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-nd-cfg">
+				<ra-unicast></ra-unicast>
+			</ipv6-neighbor>
+			<ipv6-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-ma-cfg">
+				<addresses>
+					<auto-configuration>
+						<enable></enable>
+					</auto-configuration>
+				</addresses>
+			</ipv6-network>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/13</interface-name>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>16.1.1.20</address>
+						<netmask>255.255.255.0</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+			<ipv6-neighbor xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-nd-cfg">
+				<ra-unicast></ra-unicast>
+			</ipv6-neighbor>
+			<ipv6-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-ma-cfg">
+				<addresses>
+					<auto-configuration>
+						<enable></enable>
+					</auto-configuration>
+				</addresses>
+			</ipv6-network>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/14</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/15</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/16</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/17</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/18</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/19</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/20</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/21</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/22</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/23</interface-name>
+			<shutdown></shutdown>
+		</interface-configuration>
+		<interface-configuration>
+			<active>act</active>
+			<interface-name>FourHundredGigE0/0/0/9.1</interface-name>
+			<interface-mode-non-physical>default</interface-mode-non-physical>
+			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+				<addresses>
+					<primary>
+						<address>21.1.1.2</address>
+						<netmask>255.255.255.0</netmask>
+					</primary>
+				</addresses>
+			</ipv4-network>
+			<vlan-sub-configuration xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-l2-eth-infra-cfg">
+				<vlan-identifier>
+					<vlan-type>vlan-type-dot1q</vlan-type>
+					<first-tag>3000</first-tag>
+				</vlan-identifier>
+			</vlan-sub-configuration>
+		</interface-configuration>
+	</interface-configurations>
+	<grpc xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-man-ems-cfg">
+		<port>57777</port>
+		<enable></enable>
+		<address-family>ipv4</address-family>
+		<service-layer>
+			<enable></enable>
+		</service-layer>
+	</grpc>
+	<host-names xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-shellutil-cfg">
+		<host-name>rtr1</host-name>
+	</host-names>
+	<rsvp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ip-rsvp-cfg">
+		<interfaces>
+			<interface>
+				<name>FourHundredGigE0/0/0/8</name>
+			</interface>
+			<interface>
+				<name>FourHundredGigE0/0/0/9</name>
+			</interface>
+			<interface>
+				<name>FourHundredGigE0/0/0/12</name>
+			</interface>
+			<interface>
+				<name>FourHundredGigE0/0/0/13</name>
+			</interface>
+		</interfaces>
+	</rsvp>
+	<telemetry-model-driven xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-telemetry-model-driven-cfg">
+		<sensor-groups>
+			<sensor-group>
+				<sensor-group-identifier>test</sensor-group-identifier>
+				<sensor-paths>
+					<sensor-path>
+						<telemetry-sensor-path>Cisco-IOS-XR-bundlemgr-oper:bundles-adjacency/nodes/node/brief</telemetry-sensor-path>
+					</sensor-path>
+				</sensor-paths>
+			</sensor-group>
+		</sensor-groups>
+		<enable></enable>
+	</telemetry-model-driven>
+	<mpls-static xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-mpls-static-cfg">
+		<interfaces>
+			<interface>
+				<interface-name>FourHundredGigE0/0/0/8</interface-name>
+			</interface>
+			<interface>
+				<interface-name>FourHundredGigE0/0/0/9</interface-name>
+			</interface>
+			<interface>
+				<interface-name>FourHundredGigE0/0/0/12</interface-name>
+			</interface>
+		</interfaces>
+	</mpls-static>
+	<syslog xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-infra-syslog-cfg">
+		<console-logging>
+			<logging-level>debug</logging-level>
+		</console-logging>
+	</syslog>
+	<ip-domain xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ip-domain-cfg">
+		<vrfs>
+			<vrf>
+				<vrf-name>default</vrf-name>
+				<name>cisco.com</name>
+				<servers>
+					<server>
+						<order>0</order>
+						<server-address>8.8.8.8</server-address>
+					</server>
+				</servers>
+			</vrf>
+		</vrfs>
+	</ip-domain>
+	<interfaces xmlns="http://openconfig.net/yang/interfaces">
+		<interface>
+			<name>Loopback0</name>
+			<config>
+				<name>Loopback0</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:softwareLoopback</type>
+				<enabled>true</enabled>
+			</config>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>12.1.1.1</ip>
+								<config>
+									<ip>12.1.1.1</ip>
+									<prefix-length>32</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>Loopback100</name>
+			<config>
+				<name>Loopback100</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:softwareLoopback</type>
+				<enabled>true</enabled>
+			</config>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>13.1.1.1</ip>
+								<config>
+									<ip>13.1.1.1</ip>
+									<prefix-length>32</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/24</name>
+			<config>
+				<name>HundredGigE0/0/0/24</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/25</name>
+			<config>
+				<name>HundredGigE0/0/0/25</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/26</name>
+			<config>
+				<name>HundredGigE0/0/0/26</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/27</name>
+			<config>
+				<name>HundredGigE0/0/0/27</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/28</name>
+			<config>
+				<name>HundredGigE0/0/0/28</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/29</name>
+			<config>
+				<name>HundredGigE0/0/0/29</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/30</name>
+			<config>
+				<name>HundredGigE0/0/0/30</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/31</name>
+			<config>
+				<name>HundredGigE0/0/0/31</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/32</name>
+			<config>
+				<name>HundredGigE0/0/0/32</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/33</name>
+			<config>
+				<name>HundredGigE0/0/0/33</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/34</name>
+			<config>
+				<name>HundredGigE0/0/0/34</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>HundredGigE0/0/0/35</name>
+			<config>
+				<name>HundredGigE0/0/0/35</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>MgmtEth0/RP0/CPU0/0</name>
+			<config>
+				<name>MgmtEth0/RP0/CPU0/0</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>true</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/0</name>
+			<config>
+				<name>FourHundredGigE0/0/0/0</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>17.1.1.20</ip>
+								<config>
+									<ip>17.1.1.20</ip>
+									<prefix-length>24</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<config>
+							<enabled>true</enabled>
+						</config>
+					</ipv6>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/1</name>
+			<config>
+				<name>FourHundredGigE0/0/0/1</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/2</name>
+			<config>
+				<name>FourHundredGigE0/0/0/2</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/3</name>
+			<config>
+				<name>FourHundredGigE0/0/0/3</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/4</name>
+			<config>
+				<name>FourHundredGigE0/0/0/4</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/5</name>
+			<config>
+				<name>FourHundredGigE0/0/0/5</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/6</name>
+			<config>
+				<name>FourHundredGigE0/0/0/6</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/7</name>
+			<config>
+				<name>FourHundredGigE0/0/0/7</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/8</name>
+			<config>
+				<name>FourHundredGigE0/0/0/8</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>true</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>19.1.1.10</ip>
+								<config>
+									<ip>19.1.1.10</ip>
+									<prefix-length>24</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<config>
+							<enabled>true</enabled>
+						</config>
+					</ipv6>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/9</name>
+			<config>
+				<name>FourHundredGigE0/0/0/9</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>true</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>18.1.1.10</ip>
+								<config>
+									<ip>18.1.1.10</ip>
+									<prefix-length>24</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<config>
+							<enabled>true</enabled>
+						</config>
+					</ipv6>
+				</subinterface>
+				<subinterface>
+					<index>1</index>
+					<config>
+						<index>1</index>
+						<name>FourHundredGigE0/0/0/9.1</name>
+						<enabled>true</enabled>
+					</config>
+					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<config>
+							<enabled>false</enabled>
+						</config>
+					</ipv6>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>21.1.1.2</ip>
+								<config>
+									<ip>21.1.1.2</ip>
+									<prefix-length>24</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+					<vlan xmlns="http://openconfig.net/yang/vlan">
+						<config>
+							<vlan-id>3000</vlan-id>
+						</config>
+					</vlan>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/10</name>
+			<config>
+				<name>FourHundredGigE0/0/0/10</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/11</name>
+			<config>
+				<name>FourHundredGigE0/0/0/11</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/12</name>
+			<config>
+				<name>FourHundredGigE0/0/0/12</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>true</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>15.1.1.20</ip>
+								<config>
+									<ip>15.1.1.20</ip>
+									<prefix-length>24</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<config>
+							<enabled>true</enabled>
+						</config>
+					</ipv6>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/13</name>
+			<config>
+				<name>FourHundredGigE0/0/0/13</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>true</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+			<subinterfaces>
+				<subinterface>
+					<index>0</index>
+					<ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<addresses>
+							<address>
+								<ip>16.1.1.20</ip>
+								<config>
+									<ip>16.1.1.20</ip>
+									<prefix-length>24</prefix-length>
+								</config>
+							</address>
+						</addresses>
+					</ipv4>
+					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
+						<config>
+							<enabled>true</enabled>
+						</config>
+					</ipv6>
+				</subinterface>
+			</subinterfaces>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/14</name>
+			<config>
+				<name>FourHundredGigE0/0/0/14</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/15</name>
+			<config>
+				<name>FourHundredGigE0/0/0/15</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/16</name>
+			<config>
+				<name>FourHundredGigE0/0/0/16</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/17</name>
+			<config>
+				<name>FourHundredGigE0/0/0/17</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/18</name>
+			<config>
+				<name>FourHundredGigE0/0/0/18</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/19</name>
+			<config>
+				<name>FourHundredGigE0/0/0/19</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/20</name>
+			<config>
+				<name>FourHundredGigE0/0/0/20</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/21</name>
+			<config>
+				<name>FourHundredGigE0/0/0/21</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/22</name>
+			<config>
+				<name>FourHundredGigE0/0/0/22</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+		<interface>
+			<name>FourHundredGigE0/0/0/23</name>
+			<config>
+				<name>FourHundredGigE0/0/0/23</name>
+				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
+				<enabled>false</enabled>
+			</config>
+			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
+				<config>
+					<auto-negotiate>false</auto-negotiate>
+				</config>
+			</ethernet>
+		</interface>
+	</interfaces>
+	<telemetry-system xmlns="http://openconfig.net/yang/telemetry">
+		<sensor-groups>
+			<sensor-group>
+				<sensor-group-id>test</sensor-group-id>
+				<config>
+					<sensor-group-id>test</sensor-group-id>
+				</config>
+				<sensor-paths>
+					<sensor-path>
+						<path>Cisco-IOS-XR-bundlemgr-oper:bundles-adjacency/nodes/node/brief</path>
+						<config>
+							<path>Cisco-IOS-XR-bundlemgr-oper:bundles-adjacency/nodes/node/brief</path>
+						</config>
+					</sensor-path>
+				</sensor-paths>
+			</sensor-group>
+		</sensor-groups>
+	</telemetry-system>

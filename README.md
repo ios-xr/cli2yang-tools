@@ -63,135 +63,249 @@ Generating Python bindings...+ python -m grpc_tools.protoc -I ./ --python_out=/h
 Done
 admin@devbox:cli2yang-tools$ 
 
+## Converting CLI configuration to YANG XML
+
+The goal is to convert a given CLI configuration into corresponding XML [(RFC7950)](https://tools.ietf.org/html/rfc7950) and JSON [(RFC7951)](https://tools.ietf.org/html/rfc7951) based on the Yang models supported by the router.
+
+**Note**: In the current version, only XML (RFC7950) is supported. We will add support for JSON(RFC 7951) soon through IOS-XR's GNMI support.
+
+
+
+## Before we Begin
+
+A few groundkeeping tasks on the router running IOS-XR (tested: 6.2.25+) before we run the code.
+
+### Enable netconf and SSH on the router
+
+We expect a minimum base configuration on the router to begin with. A separate base.config is also applied by the script during its running process to normalize the bvbase state before creating a diff.
+
+The minimum base config is given below (note that the username/password could be set to whatever you need, and MgmtIP can be static and reachable. Rest is mandatory)
 
 ```
-
-### Configure your router
-
-Put whatever configuration (through CLI) that you want to put on your router. Make sure you enable netconf over SSH and gRPC as part of the configuration.
-
-For example, the following CLI configuration was applied to the router under test:
-
-```
-!! IOS XR Configuration version = 6.4.1
-!! Last configuration change at Fri Sep  7 01:27:21 2018 by admin
+!! IOS XR Configuration
+!! Last configuration change at Thu Jan 24 05:21:03 2019 by vagrant
 !
-hostname r1
-banner motd ;
---------------------------------------------------------------------------
-  Router 1 (Cisco IOS XR Sandbox)
---------------------------------------------------------------------------
-;
-logging console debugging
-service timestamps log datetime msec
-service timestamps debug datetime msec
-username admin
+hostname ios
+username vagrant
  group root-lr
  group cisco-support
- secret 5 $1$A4C9$oaNorr6BXDruE4gDd086L.
-!
-line console
- timestamp disable
- exec-timeout 0 0
-!
-vty-pool default 0 4 line-template VTY-TEMPLATE
-call-home
- service active
- contact smart-licensing
- profile CiscoTAC-1
-  active
-  destination transport-method http
- !
+ secret 5 $1$FTjI$nxqpDLAdVH1E3agGiVOdT0
 !
 interface MgmtEth0/RP0/CPU0/0
- description *** MANAGEMENT INTERFACE ***
  ipv4 address dhcp
 !
-interface GigabitEthernet0/0/0/0
- ipv6 address 1010:1010::10/64
- ipv6 enable
-!
-interface GigabitEthernet0/0/0/1
- ipv6 address 2020:2020::10/64
- ipv6 enable
-!
-interface GigabitEthernet0/0/0/2
- shutdown
-!
-interface GigabitEthernet0/0/0/3
- shutdown
-!
-interface GigabitEthernet0/0/0/4
- shutdown
-!
-router static
- address-family ipv4 unicast
-  0.0.0.0/0 10.0.2.2
-  1.2.3.5/32 10.0.2.2
- !
-!
-router bgp 65400
- bgp router-id 11.1.1.10
- address-family ipv4 unicast
-  network 11.1.1.0/24
- !
- neighbor 11.1.1.20
-  remote-as 65450
-  address-family ipv4 unicast
-   next-hop-self
-  !
- !
-!
-grpc
- port 57777
- no-tls
- service-layer
- !
-!
-telemetry model-driven
- destination-group DGroup1
-  address-family ipv4 192.168.122.11 port 5432
-   encoding self-describing-gpb
-   protocol tcp
-  !
- !
- sensor-group SGroup1
-  sensor-path Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters
- !
- sensor-group IPV6Neighbor
-  sensor-path Cisco-IOS-XR-ipv6-nd-oper:ipv6-node-discovery/nodes/node/neighbor-interfaces/neighbor-interface/host-addresses/host-address
- !
- subscription IPV6
-  sensor-group-id IPV6Neighbor sample-interval 15000
- !
- subscription Sub1
-  sensor-group-id SGroup1 sample-interval 30000
-  destination-id DGroup1
- !
 !
 netconf-yang agent
  ssh
 !
 ssh server v2
-ssh server netconf vrf default
+ssh server vrf default
 end
+```
 
 
+### Set up OpenSSH session in IOS-XR bash
+
+Drop into IOS-XR bash shell and start the sshd_operns service
+
+
+```
+RP/0/RP0/CPU0:ios#
+RP/0/RP0/CPU0:ios#bash
+Thu Jan 24 08:22:40.589 UTC
+RP/0/RP0/CPU0:Jan 24 08:22:40.673 UTC: bash_cmd[67017]: %INFRA-INFRA_MSG-5-RUN_LOGIN : User root logged into shell from con0/RP0/CPU0 
+
+
+[ios:~]$ 
+[ios:~]$ 
+[ios:~]$ service sshd_operns start
+SSH service for global-vrf has been created. You may use 'service sshd_operns_global-vrf <start|stop|reload|restart|status>'. 
+Service can be configured to run on reload using 'chkconfig --add sshd_operns_global-vrf' 
+Thu Jan 24 08:23:30 UTC 2019 /etc/init.d/sshd_operns: Waiting for OPERNS interface creation...
+Thu Jan 24 08:23:30 UTC 2019 /etc/init.d/sshd_operns: Press ^C to stop if needed.
+Thu Jan 24 08:23:30 UTC 2019 /etc/init.d/sshd_operns: Found nic, Tg0_0_0_0
+Thu Jan 24 08:23:30 UTC 2019 /etc/init.d/sshd_operns: Waiting for OPERNS management interface creation...
+Thu Jan 24 08:23:30 UTC 2019 /etc/init.d/sshd_operns: Found nic, Mg0_RP0_CPU0_0
+Thu Jan 24 08:23:30 UTC 2019 /etc/init.d/sshd_operns: OPERNS is ready
+Thu Jan 24 08:23:30 UTC 2019 /etc/init.d/sshd_operns: Start sshd_operns
+Starting OpenBSD Secure Shell server: sshd
+[ios:~]$ 
+
+```
+
+This will start sshd on port 57722 in the Linux kernel:
+
+```
+RP/0/RP0/CPU0:rtr2#bash
+Thu Jan 24 08:24:59.177 UTC
+RP/0/RP0/CPU0:Jan 24 08:24:59.261 UTC: bash_cmd[67681]: %INFRA-INFRA_MSG-5-RUN_LOGIN : User root logged into shell from con0/RP0/CPU0 
+
+[rtr2:~]$ 
+[rtr2:~]$ netstat -nlp | grep 57722
+tcp        0      0 0.0.0.0:57722           0.0.0.0:*               LISTEN      18382/sshd      
+tcp6       0      0 :::57722                :::*                    LISTEN      18382/sshd      
+[rtr2:~]$ 
 
 
 ```
 
-Now the goal is to convert this CLI into corresponding XML [(RFC7950)](https://tools.ietf.org/html/rfc7950) and JSON [(RFC7951)](https://tools.ietf.org/html/rfc7951) based on the Yang models supported by the router.
 
-### Run the script
+### Set up a user in the shell and add to /etc/sudoers
+
+We'll be using ZTP CLI hooks to do CLI operations in tandem with netconf (and gRPC in the future) to validate that the device gets into the correct CLI state using the XML and JSON YANG representations that we derive.
+
+To perform these ZTP operations seamlessly over SSH, we set up a sudo user and give it privileges to do without needing a password.
+It goes without saying: DO NOT DO THIS IN PRODUCTION. This is just to create a setup to ease the process of converting CLIs configs to YANG RPCs. Try it out on a private setup or virtual router meant for development and create the repository of YANG RPCs you can then deploy on production routers.
+
+
+Again drop to bash and use `adduser`:
+You can choose whatever username/password combination you want.
+
+```
+RP/0/RP0/CPU0:rtr2#bash
+Thu Jan 24 08:24:59.177 UTC
+RP/0/RP0/CPU0:
+[rtr2:~]$ adduser vagrant
+Login name for new user []:vagrant
+
+User id for vagrant [ defaults to next available]:
+
+Initial group for vagrant [users]:
+
+Additional groups for vagrant []:sudo
+
+vagrant's home directory [/home/vagrant]:
+
+vagrant's shell [/bin/bash]:
+
+vagrant's account expiry date (MM/DD/YY) []:
+
+OK, Im about to make a new account. Heres what you entered so far:
+New login name: vagrant
+New UID: [Next available]
+Initial group: users
+/usr/sbin/adduser: line 68: [: -G: binary operator expected
+Additional groups: sudo
+Home directory: /home/vagrant
+Shell: /bin/bash
+Expiry date: [no expiration]
+This is it... if you want to bail out, you'd better do it now.
+
+Making new account...
+useradd: user 'vagrant' already exists
+Changing the user information for vagrant
+Enter the new value, or press ENTER for the default
+	Full Name []: 
+	Room Number []: 
+	Work Phone []: 
+	Home Phone []: 
+	Other []: 
+Enter new UNIX password: 
+Retype new UNIX password: 
+passwd: password updated successfully
+Done...
+[rtr2:~]$ 
+[rtr2:~]$ 
+[rtr2:~]$ 
+[rtr2:~]$ id vagrant
+uid=1000(vagrant) gid=1009(vagrant) groups=1009(vagrant),27(sudo),1000(cisco-support),1005(root-lr)
+[rtr2:~]$ 
+
+```
+
+Add the created user with NOPASSWD facility to become sudo without prompts:
+
+```
+[rtr2:~]$ 
+[rtr2:~]$ echo "vagrant ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+
+```
+
+
+### Add your SSH keys to the router's shell
+
+Finally, to enable password-free operation for the ZTP CLI hooks over SSH, add your client machine's (where this code will be running) public key to the user's (the one you created above) `authorized_keys` file.
+
+To do this on an XR box (which has restrictive permissions for non root users), ssh locally in the bash shell using the username/password you just created above.
+You will then logged in as the user created (in our case: `vagrant`):
+
+```
+RP/0/RP0/CPU0:rtr2#bash
+Thu Jan 24 08:24:59.177 UTC
+[rtr2:~]$ 
+[rtr2:~]$ ssh -p 57722 vagrant@localhost
+vagrant@localhost's password: 
+Last login: Thu Jan 24 08:46:12 2019 from 11.11.11.2
+-sh: /var/log/boot.log: Permission denied
+-sh: /var/log/boot.log: Permission denied
+-sh: /var/log/boot.log: Permission denied
+rtr2:~$ 
+rtr2:~$ 
+rtr2:~$ 
+rtr2:~$ ssh-keygen -t rsa
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/vagrant/.ssh/id_rsa): 
+Created directory '/home/vagrant/.ssh'.
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/vagrant/.ssh/id_rsa.
+Your public key has been saved in /home/vagrant/.ssh/id_rsa.pub.
+The key fingerprint is:
+f9:7e:ab:0e:4a:7c:89:bd:7a:a4:fe:b9:58:4e:1a:af vagrant@rtr2
+The key's randomart image is:
++--[ RSA 2048]----+
+|                 |
+|                 |
+|                 |
+|         .       |
+|        S        |
+|     . o.o       |
+|      =oB .      |
+|     ..@.=  .    |
+|     .E=Bo+o..   |
++-----------------+
+rtr2:~$ 
+rtr2:~$ 
+rtr2:~$ cat .ssh/authorized_keys 
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsXA/klX56NGMGUW+04pG3Adh9kB9QjVeyMKqRQmubvN+3V/tB3Wyha7sqKGJrf7yJ+l+AO1N+pvPyzPuVTZI3JSwDHCMHNxSN8/Pgw486ghwFEB8RO/xfhHt+BDTYD4vA6jEu5Y8Eg92mX/aVv4jm1NQU87a7yuwT5Eto6pPwhztB2rnstDuJDgj5jm3+jWOGB57CP6PARuqtdosT1OEiLQY/OH1vWe5mADh1B5EqyCa/AuSyBCJle9J7q6uxqVrsC6a1/JTbOVftleibENnHy6xNzMSvM3E31shAENm01hyGbQ803c1lSbZ0K0jDsSFHdHRdgpjil9ddWpZi0x75 cisco@dhcpserver
+rtr2:~$ 
+
+```
+ 
+
+You should now be able to login to the shell of the XR router using the created user and become sudo without a password!:
+
+```
+cisco@dhcpserver:~$ 
+cisco@dhcpserver:~$ ssh -p 57722 vagrant@11.11.11.33
+Last login: Thu Jan 24 08:58:52 2019 from 11.11.11.2
+-sh: /var/log/boot.log: Permission denied
+-sh: /var/log/boot.log: Permission denied
+-sh: /var/log/boot.log: Permission denied
+rtr2:~$ 
+rtr2:~$ whoami
+vagrant
+rtr2:~$ 
+rtr2:~$ sudo -i
+[rtr2:~]$ 
+[rtr2:~]$ whoami
+root
+[rtr2:~]$ 
+
+```
+
+
+## Run the script
 
 Run the script against the router. Before starting, dump the options available:
 
 ```
-admin@devbox:cli2yang-tools$ ./cli2xmljson.py 
-usage: cli2xmljson.py [-h] [-s HOST] [-n NC_PORT] [-g GRPC_PORT] [-u USERNAME]
-                      [-p PASSWORD] [-d] [-t] [-x NC_XML_FILE]
-                      [-j GRPC_JSON_FILE]
+cisco@ubuntu:~/cli2yang-tools$ ./cli2xmljson.py -h
+usage: cli2xmljson.py [-h] [-s HOST] [-n NC_PORT] [-g GRPC_PORT]
+                      [-l XR_LNX_SSH_PORT] [-u USERNAME] [-p PASSWORD]
+                      [-c INPUT_CLI_FILE] [-b BASE_CONFIG_FILE] [-d] [-t]
+                      [-x NC_XML_FILE] [-j GRPC_JSON_FILE]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -201,651 +315,110 @@ optional arguments:
   -n NC_PORT, --netconf-port NC_PORT
                         netconf port
   -g GRPC_PORT, --grpc-port GRPC_PORT
-                        gRPC port
+                        gRPC port -- IMPORTANT: Not supported in this version.
+                        Support using GNMI will be brought in soon.
+  -l XR_LNX_SSH_PORT, --xr-lnx-ssh-port XR_LNX_SSH_PORT
+                        XR linux shell SSH port
   -u USERNAME, --username USERNAME
                         IOS-XR AAA username
   -p PASSWORD, --password PASSWORD
                         IOS-XR AAA password
+  -c INPUT_CLI_FILE, --input-cli-file INPUT_CLI_FILE
+                        Specify input file path for CLI configuration to
+                        convert into netconf RPC
+  -b BASE_CONFIG_FILE, --base-config-file BASE_CONFIG_FILE
+                        Specify file path for base CLI configuration to apply
+                        to device before starting, by default: ./base.config
   -d, --debug           Enable debugging
   -t, --test-merge      Test config merge with each output file
   -x NC_XML_FILE, --nc-xml-file NC_XML_FILE
                         Specify output file path for netconf based XML output
   -j GRPC_JSON_FILE, --grpc-json-file GRPC_JSON_FILE
                         Specify output file path for gRPC based JSON output
-admin@devbox:cli2yang-tools$ 
-
-
+cisco@ubuntu:~/cli2yang-tools$ 
 ```
+
 
 For the router configured with netconf and gRPC as shown above, run the script like so:
-(you can specify custom filenames using options -x and -j: The default filenames are `./yang_nc.xml` for the XML representation and `./yang_grpc.json` for the JSON representation).
+
+**Note**:  Some sample config files are provided as part of the code. Use them to test the script against your IOS-XR router with the `-c` option as shown below.
 
 
 ```
 
-admin@devbox:cli2yang-tools$ 
-admin@devbox:cli2yang-tools$ python3 ./cli2xmljson.py -s 192.168.122.21 -n 830 -g 57777 -u admin -p admin 
-Router's CLI configuration converted into YANG XML and saved in file: ./yang_nc.xml
-Router's CLI configuration converted into YANG JSON and saved in file: ./yang_grpc.json
-admin@devbox:cli2yang-tools$ 
+co@ubuntu:~/cli2yang-tools$ ./cli2xmljson.py -s jumphost -n 2202 -l 57723 -c ./bgp.config -u vagrant -p vagrant -t
+Replacing existing router configuration with the specified base_config using file:./base.config
+Establishing connection over netconf...
+Fetching capabilities over netconf...
+Fetching router's base configuration over netconf in YANG XML format...
+Save original CLI configuration...
+Apply (Merge Configuration) the provided input CLI file to the router's configuration
+Fetch the changed configuration of the router using netconf in YANG XML format
+Determining diff between original YANG XML (base config) and current YANG XML (input CLI config)...
+Resetting the router configuration back to its original state...
+Testing the generated YANG XML by doing a merge config....
+Successful!!
+The CLI configuration created by applying the generated YANG XML is...
 
 
+!! IOS XR Configuration 
+router bgp 65001
+ address-family ipv4 unicast
+ !
+ neighbor-group IBGP
+  remote-as 65001
+  update-source Loopback0
+  address-family ipv4 unicast
+  !
+ !
+ neighbor 172.16.255.2
+  use neighbor-group IBGP
+ !
+!
+end
+
+
+Input CLI configuration converted into YANG XML and saved in file: ./yang_nc.xml
+Finally resetting the router back to its original configuration
+cisco@ubuntu:~/cli2yang-tools$ 
 
 ```
 
 ### Verify the files created
 
-The XML file created by the script ends up looking something like:  
+For the input configuration file like so:
+
+
+
+```
+cisco@ubuntu:~/cli2yang-tools$ cat ./bgp.config 
+router bgp 65001
+ address-family ipv4 unicast
+ !
+ neighbor-group IBGP
+  remote-as 65001
+  update-source Loopback0
+  address-family ipv4 unicast
+  !
+ !
+ neighbor 172.16.255.2
+  use neighbor-group IBGP
+ !
+!
+end
+cisco@ubuntu:~/cli2yang-tools$ 
+
+```
+
+The YANG XML file created by the script ends up looking something like:  
 
 (Use this file to directly do a config-merge/config-replace over netconf).
 
 
 ```xml
-admin@devbox:cli2yang-tools$ cat yang_nc.xml 
+cisco@ubuntu:~/cli2yang-tools$ cat ./yang_nc.xml 
 <?xml version="1.0" encoding="utf-8"?>
 <config>
-	<host-names xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-shellutil-cfg">
-		<host-name>r1</host-name>
-	</host-names>
-	<call-home xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-call-home-cfg">
-		<active></active>
-		<contact-smart-licensing>true</contact-smart-licensing>
-		<profiles>
-			<profile>
-				<profile-name>CiscoTAC-1</profile-name>
-				<create></create>
-				<active></active>
-				<methods>
-					<method>
-						<method>email</method>
-						<enable>false</enable>
-					</method>
-					<method>
-						<method>http</method>
-						<enable>true</enable>
-					</method>
-				</methods>
-			</profile>
-		</profiles>
-	</call-home>
-	<telemetry-model-driven xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-telemetry-model-driven-cfg">
-		<destination-groups>
-			<destination-group>
-				<destination-id>DGroup1</destination-id>
-				<ipv4-destinations>
-					<ipv4-destination>
-						<ipv4-address>192.168.122.11</ipv4-address>
-						<destination-port>5432</destination-port>
-						<encoding>self-describing-gpb</encoding>
-						<protocol>
-							<protocol>tcp</protocol>
-							<no-tls>1</no-tls>
-						</protocol>
-					</ipv4-destination>
-				</ipv4-destinations>
-			</destination-group>
-		</destination-groups>
-		<sensor-groups>
-			<sensor-group>
-				<sensor-group-identifier>SGroup1</sensor-group-identifier>
-				<sensor-paths>
-					<sensor-path>
-						<telemetry-sensor-path>Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters</telemetry-sensor-path>
-					</sensor-path>
-				</sensor-paths>
-			</sensor-group>
-			<sensor-group>
-				<sensor-group-identifier>IPV6Neighbor</sensor-group-identifier>
-				<sensor-paths>
-					<sensor-path>
-						<telemetry-sensor-path>Cisco-IOS-XR-ipv6-nd-oper:ipv6-node-discovery/nodes/node/neighbor-interfaces/neighbor-interface/host-addresses/host-address</telemetry-sensor-path>
-					</sensor-path>
-				</sensor-paths>
-			</sensor-group>
-		</sensor-groups>
-		<enable></enable>
-		<subscriptions>
-			<subscription>
-				<subscription-identifier>IPV6</subscription-identifier>
-				<sensor-profiles>
-					<sensor-profile>
-						<sensorgroupid>IPV6Neighbor</sensorgroupid>
-						<sample-interval>15000</sample-interval>
-					</sensor-profile>
-				</sensor-profiles>
-			</subscription>
-			<subscription>
-				<subscription-identifier>Sub1</subscription-identifier>
-				<sensor-profiles>
-					<sensor-profile>
-						<sensorgroupid>SGroup1</sensorgroupid>
-						<sample-interval>30000</sample-interval>
-					</sensor-profile>
-				</sensor-profiles>
-				<destination-profiles>
-					<destination-profile>
-						<destination-id>DGroup1</destination-id>
-					</destination-profile>
-				</destination-profiles>
-			</subscription>
-		</subscriptions>
-	</telemetry-model-driven>
-	<interface-configurations xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ifmgr-cfg">
-		<interface-configuration>
-			<active>act</active>
-			<interface-name>MgmtEth0/RP0/CPU0/0</interface-name>
-			<description>*** MANAGEMENT INTERFACE ***</description>
-			<ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
-				<addresses>
-					<dhcp>
-						<enabled></enabled>
-						<pattern>MgmtEth0_RP0_CPU0_0</pattern>
-					</dhcp>
-				</addresses>
-			</ipv4-network>
-		</interface-configuration>
-		<interface-configuration>
-			<active>act</active>
-			<interface-name>GigabitEthernet0/0/0/0</interface-name>
-			<ipv6-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-ma-cfg">
-				<addresses>
-					<regular-addresses>
-						<regular-address>
-							<address>1010:1010::10</address>
-							<prefix-length>64</prefix-length>
-							<zone>0</zone>
-						</regular-address>
-					</regular-addresses>
-					<auto-configuration>
-						<enable></enable>
-					</auto-configuration>
-				</addresses>
-			</ipv6-network>
-		</interface-configuration>
-		<interface-configuration>
-			<active>act</active>
-			<interface-name>GigabitEthernet0/0/0/1</interface-name>
-			<ipv6-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv6-ma-cfg">
-				<addresses>
-					<regular-addresses>
-						<regular-address>
-							<address>2020:2020::10</address>
-							<prefix-length>64</prefix-length>
-							<zone>0</zone>
-						</regular-address>
-					</regular-addresses>
-					<auto-configuration>
-						<enable></enable>
-					</auto-configuration>
-				</addresses>
-			</ipv6-network>
-		</interface-configuration>
-		<interface-configuration>
-			<active>act</active>
-			<interface-name>GigabitEthernet0/0/0/2</interface-name>
-			<shutdown></shutdown>
-		</interface-configuration>
-		<interface-configuration>
-			<active>act</active>
-			<interface-name>GigabitEthernet0/0/0/3</interface-name>
-			<shutdown></shutdown>
-		</interface-configuration>
-		<interface-configuration>
-			<active>act</active>
-			<interface-name>GigabitEthernet0/0/0/4</interface-name>
-			<shutdown></shutdown>
-		</interface-configuration>
-	</interface-configurations>
-	<banners xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-infra-infra-cfg">
-		<banner>
-			<banner-name>motd</banner-name>
-			<banner-text>;
---------------------------------------------------------------------------
-  Router 1 (Cisco IOS XR Sandbox)
---------------------------------------------------------------------------
-;</banner-text>
-		</banner>
-	</banners>
-	<aaa xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-lib-cfg">
-		<usernames xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-locald-cfg">
-			<username>
-				<ordering-index>0</ordering-index>
-				<name>admin</name>
-				<usergroup-under-usernames>
-					<usergroup-under-username>
-						<name>root-lr</name>
-					</usergroup-under-username>
-					<usergroup-under-username>
-						<name>cisco-support</name>
-					</usergroup-under-username>
-				</usergroup-under-usernames>
-				<secret>$1$A4C9$oaNorr6BXDruE4gDd086L.</secret>
-			</username>
-		</usernames>
-	</aaa>
-	<grpc xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-man-ems-cfg">
-		<port>57777</port>
-		<no-tls></no-tls>
-		<enable></enable>
-		<service-layer>
-			<enable></enable>
-		</service-layer>
-	</grpc>
-	<vty xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-tty-vty-cfg">
-		<vty-pools>
-			<vty-pool>
-				<pool-name>default</pool-name>
-				<first-vty>0</first-vty>
-				<last-vty>4</last-vty>
-				<line-template>VTY-TEMPLATE</line-template>
-			</vty-pool>
-		</vty-pools>
-	</vty>
-	<ssh xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-crypto-ssh-cfg">
-		<server>
-			<v2></v2>
-			<netconf-vrf-table>
-				<vrf>
-					<vrf-name>default</vrf-name>
-					<enable></enable>
-				</vrf>
-			</netconf-vrf-table>
-		</server>
-	</ssh>
-	<bgp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-bgp-cfg">
-		<instance>
-			<instance-name>default</instance-name>
-			<instance-as>
-				<as>0</as>
-				<four-byte-as>
-					<as>65400</as>
-					<bgp-running></bgp-running>
-					<default-vrf>
-						<global>
-							<router-id>11.1.1.10</router-id>
-							<global-afs>
-								<global-af>
-									<af-name>ipv4-unicast</af-name>
-									<enable></enable>
-									<sourced-networks>
-										<sourced-network>
-											<network-addr>11.1.1.0</network-addr>
-											<network-prefix>24</network-prefix>
-										</sourced-network>
-									</sourced-networks>
-								</global-af>
-							</global-afs>
-						</global>
-						<bgp-entity>
-							<neighbors>
-								<neighbor>
-									<neighbor-address>11.1.1.20</neighbor-address>
-									<remote-as>
-										<as-xx>0</as-xx>
-										<as-yy>65450</as-yy>
-									</remote-as>
-									<neighbor-afs>
-										<neighbor-af>
-											<af-name>ipv4-unicast</af-name>
-											<activate></activate>
-											<next-hop-self>true</next-hop-self>
-										</neighbor-af>
-									</neighbor-afs>
-								</neighbor>
-							</neighbors>
-						</bgp-entity>
-					</default-vrf>
-				</four-byte-as>
-			</instance-as>
-		</instance>
-	</bgp>
-	<netconf-yang xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-man-netconf-cfg">
-		<agent>
-			<ssh>
-				<enable></enable>
-			</ssh>
-		</agent>
-	</netconf-yang>
-	<tty xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-tty-server-cfg">
-		<tty-lines>
-			<tty-line>
-				<name>console</name>
-				<exec>
-					<time-stamp>false</time-stamp>
-					<timeout>
-						<minutes>0</minutes>
-						<seconds>0</seconds>
-					</timeout>
-				</exec>
-			</tty-line>
-		</tty-lines>
-	</tty>
-	<syslog-service xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-infra-syslog-cfg">
-		<timestamps>
-			<log>
-				<log-datetime>
-					<log-datetime-value>
-						<msec>enable</msec>
-					</log-datetime-value>
-				</log-datetime>
-			</log>
-			<debug>
-				<debug-datetime>
-					<datetime-value>
-						<msec>enable</msec>
-					</datetime-value>
-				</debug-datetime>
-			</debug>
-		</timestamps>
-	</syslog-service>
-	<syslog xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-infra-syslog-cfg">
-		<console-logging>
-			<logging-level>debug</logging-level>
-		</console-logging>
-	</syslog>
-	<router-static xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ip-static-cfg">
-		<default-vrf>
-			<address-family>
-				<vrfipv4>
-					<vrf-unicast>
-						<vrf-prefixes>
-							<vrf-prefix>
-								<prefix>0.0.0.0</prefix>
-								<prefix-length>0</prefix-length>
-								<vrf-route>
-									<vrf-next-hop-table>
-										<vrf-next-hop-next-hop-address>
-											<next-hop-address>10.0.2.2</next-hop-address>
-										</vrf-next-hop-next-hop-address>
-									</vrf-next-hop-table>
-								</vrf-route>
-							</vrf-prefix>
-							<vrf-prefix>
-								<prefix>1.2.3.5</prefix>
-								<prefix-length>32</prefix-length>
-								<vrf-route>
-									<vrf-next-hop-table>
-										<vrf-next-hop-next-hop-address>
-											<next-hop-address>10.0.2.2</next-hop-address>
-										</vrf-next-hop-next-hop-address>
-									</vrf-next-hop-table>
-								</vrf-route>
-							</vrf-prefix>
-						</vrf-prefixes>
-					</vrf-unicast>
-				</vrfipv4>
-			</address-family>
-		</default-vrf>
-	</router-static>
-	<fpd xmlns="http://www.cisco.com/ns/yang/Cisco-IOS-XR-sysadmin-fpd-infra-cli-fpd">
-		<config>
-			<auto-upgrade>disable</auto-upgrade>
-		</config>
-	</fpd>
-	<service xmlns="http://www.cisco.com/ns/yang/Cisco-IOS-XR-sysadmin-services">
-		<cli>
-			<interactive>
-				<enabled>true</enabled>
-			</interactive>
-		</cli>
-	</service>
-	<telemetry-system xmlns="http://openconfig.net/yang/telemetry">
-		<destination-groups>
-			<destination-group>
-				<group-id>DGroup1</group-id>
-				<config>
-					<group-id>DGroup1</group-id>
-				</config>
-				<destinations>
-					<destination>
-						<destination-address>192.168.122.11</destination-address>
-						<destination-port>5432</destination-port>
-						<config>
-							<destination-address>192.168.122.11</destination-address>
-							<destination-port>5432</destination-port>
-							<destination-protocol>TCP</destination-protocol>
-						</config>
-					</destination>
-				</destinations>
-			</destination-group>
-		</destination-groups>
-		<sensor-groups>
-			<sensor-group>
-				<sensor-group-id>SGroup1</sensor-group-id>
-				<config>
-					<sensor-group-id>SGroup1</sensor-group-id>
-				</config>
-				<sensor-paths>
-					<sensor-path>
-						<path>Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters</path>
-						<config>
-							<path>Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters</path>
-						</config>
-					</sensor-path>
-				</sensor-paths>
-			</sensor-group>
-			<sensor-group>
-				<sensor-group-id>IPV6Neighbor</sensor-group-id>
-				<config>
-					<sensor-group-id>IPV6Neighbor</sensor-group-id>
-				</config>
-				<sensor-paths>
-					<sensor-path>
-						<path>Cisco-IOS-XR-ipv6-nd-oper:ipv6-node-discovery/nodes/node/neighbor-interfaces/neighbor-interface/host-addresses/host-address</path>
-						<config>
-							<path>Cisco-IOS-XR-ipv6-nd-oper:ipv6-node-discovery/nodes/node/neighbor-interfaces/neighbor-interface/host-addresses/host-address</path>
-						</config>
-					</sensor-path>
-				</sensor-paths>
-			</sensor-group>
-		</sensor-groups>
-		<subscriptions>
-			<persistent>
-				<subscription>
-					<subscription-id>IPV6</subscription-id>
-					<config>
-						<subscription-id>IPV6</subscription-id>
-					</config>
-					<sensor-profiles>
-						<sensor-profile>
-							<sensor-group>IPV6Neighbor</sensor-group>
-							<config>
-								<sensor-group>IPV6Neighbor</sensor-group>
-								<sample-interval>15000</sample-interval>
-							</config>
-						</sensor-profile>
-					</sensor-profiles>
-				</subscription>
-				<subscription>
-					<subscription-id>Sub1</subscription-id>
-					<config>
-						<subscription-id>Sub1</subscription-id>
-					</config>
-					<sensor-profiles>
-						<sensor-profile>
-							<sensor-group>SGroup1</sensor-group>
-							<config>
-								<sensor-group>SGroup1</sensor-group>
-								<sample-interval>30000</sample-interval>
-							</config>
-						</sensor-profile>
-					</sensor-profiles>
-					<destination-groups>
-						<destination-group>
-							<group-id>DGroup1</group-id>
-							<config>
-								<group-id>DGroup1</group-id>
-							</config>
-						</destination-group>
-					</destination-groups>
-				</subscription>
-			</persistent>
-		</subscriptions>
-	</telemetry-system>
-	<interfaces xmlns="http://openconfig.net/yang/interfaces">
-		<interface>
-			<name>MgmtEth0/RP0/CPU0/0</name>
-			<config>
-				<name>MgmtEth0/RP0/CPU0/0</name>
-				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
-				<enabled>true</enabled>
-				<description>*** MANAGEMENT INTERFACE ***</description>
-			</config>
-			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
-				<config>
-					<auto-negotiate>false</auto-negotiate>
-				</config>
-			</ethernet>
-			<subinterfaces>
-				<subinterface>
-					<index>0</index>
-				</subinterface>
-			</subinterfaces>
-		</interface>
-		<interface>
-			<name>GigabitEthernet0/0/0/0</name>
-			<config>
-				<name>GigabitEthernet0/0/0/0</name>
-				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
-				<enabled>true</enabled>
-			</config>
-			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
-				<config>
-					<auto-negotiate>false</auto-negotiate>
-				</config>
-			</ethernet>
-			<subinterfaces>
-				<subinterface>
-					<index>0</index>
-					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
-						<addresses>
-							<address>
-								<ip>1010:1010::10</ip>
-								<config>
-									<ip>1010:1010::10</ip>
-									<prefix-length>64</prefix-length>
-								</config>
-							</address>
-						</addresses>
-						<config>
-							<enabled>true</enabled>
-						</config>
-					</ipv6>
-				</subinterface>
-			</subinterfaces>
-		</interface>
-		<interface>
-			<name>GigabitEthernet0/0/0/1</name>
-			<config>
-				<name>GigabitEthernet0/0/0/1</name>
-				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
-				<enabled>true</enabled>
-			</config>
-			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
-				<config>
-					<auto-negotiate>false</auto-negotiate>
-				</config>
-			</ethernet>
-			<subinterfaces>
-				<subinterface>
-					<index>0</index>
-					<ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
-						<addresses>
-							<address>
-								<ip>2020:2020::10</ip>
-								<config>
-									<ip>2020:2020::10</ip>
-									<prefix-length>64</prefix-length>
-								</config>
-							</address>
-						</addresses>
-						<config>
-							<enabled>true</enabled>
-						</config>
-					</ipv6>
-				</subinterface>
-			</subinterfaces>
-		</interface>
-		<interface>
-			<name>GigabitEthernet0/0/0/2</name>
-			<config>
-				<name>GigabitEthernet0/0/0/2</name>
-				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
-				<enabled>false</enabled>
-			</config>
-			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
-				<config>
-					<auto-negotiate>false</auto-negotiate>
-				</config>
-			</ethernet>
-		</interface>
-		<interface>
-			<name>GigabitEthernet0/0/0/3</name>
-			<config>
-				<name>GigabitEthernet0/0/0/3</name>
-				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
-				<enabled>false</enabled>
-			</config>
-			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
-				<config>
-					<auto-negotiate>false</auto-negotiate>
-				</config>
-			</ethernet>
-		</interface>
-		<interface>
-			<name>GigabitEthernet0/0/0/4</name>
-			<config>
-				<name>GigabitEthernet0/0/0/4</name>
-				<type xmlns:idx="urn:ietf:params:xml:ns:yang:iana-if-type">idx:ethernetCsmacd</type>
-				<enabled>false</enabled>
-			</config>
-			<ethernet xmlns="http://openconfig.net/yang/interfaces/ethernet">
-				<config>
-					<auto-negotiate>false</auto-negotiate>
-				</config>
-			</ethernet>
-		</interface>
-	</interfaces>
-	<lacp xmlns="http://openconfig.net/yang/lacp">
-		<interfaces>
-			<interface>
-				<name>MgmtEth0/RP0/CPU0/0</name>
-				<config>
-					<name>MgmtEth0/RP0/CPU0/0</name>
-				</config>
-			</interface>
-			<interface>
-				<name>GigabitEthernet0/0/0/0</name>
-				<config>
-					<name>GigabitEthernet0/0/0/0</name>
-				</config>
-			</interface>
-			<interface>
-				<name>GigabitEthernet0/0/0/1</name>
-				<config>
-					<name>GigabitEthernet0/0/0/1</name>
-				</config>
-			</interface>
-			<interface>
-				<name>GigabitEthernet0/0/0/2</name>
-				<config>
-					<name>GigabitEthernet0/0/0/2</name>
-				</config>
-			</interface>
-			<interface>
-				<name>GigabitEthernet0/0/0/3</name>
-				<config>
-					<name>GigabitEthernet0/0/0/3</name>
-				</config>
-			</interface>
-			<interface>
-				<name>GigabitEthernet0/0/0/4</name>
-				<config>
-					<name>GigabitEthernet0/0/0/4</name>
-				</config>
-			</interface>
-		</interfaces>
-	</lacp>
 	<network-instances xmlns="http://openconfig.net/yang/network-instance">
 		<network-instance>
 			<name>default</name>
@@ -860,933 +433,97 @@ admin@devbox:cli2yang-tools$ cat yang_nc.xml
 					<bgp>
 						<global>
 							<config>
-								<as>65400</as>
-								<router-id>11.1.1.10</router-id>
+								<as>65001</as>
 							</config>
 							<afi-safis>
 								<afi-safi>
-									<afi-safi-name>IPV4_UNICAST</afi-safi-name>
+									<afi-safi-name xmlns:idx="http://openconfig.net/yang/bgp-types">idx:IPV4_UNICAST</afi-safi-name>
 									<config>
-										<afi-safi-name>IPV4_UNICAST</afi-safi-name>
+										<afi-safi-name xmlns:idx="http://openconfig.net/yang/bgp-types">idx:IPV4_UNICAST</afi-safi-name>
 										<enabled>true</enabled>
 									</config>
 								</afi-safi>
 							</afi-safis>
 						</global>
-						<neighbors>
-							<neighbor>
-								<neighbor-address>11.1.1.20</neighbor-address>
+						<peer-groups>
+							<peer-group>
+								<peer-group-name>IBGP</peer-group-name>
 								<config>
-									<neighbor-address>11.1.1.20</neighbor-address>
-									<peer-as>65450</peer-as>
+									<peer-group-name>IBGP</peer-group-name>
+									<peer-as>65001</peer-as>
 								</config>
 								<afi-safis>
 									<afi-safi>
-										<afi-safi-name>IPV4_UNICAST</afi-safi-name>
+										<afi-safi-name xmlns:idx="http://openconfig.net/yang/bgp-types">idx:IPV4_UNICAST</afi-safi-name>
 										<config>
-											<afi-safi-name>IPV4_UNICAST</afi-safi-name>
+											<afi-safi-name xmlns:idx="http://openconfig.net/yang/bgp-types">idx:IPV4_UNICAST</afi-safi-name>
 											<enabled>true</enabled>
 										</config>
 									</afi-safi>
 								</afi-safis>
+							</peer-group>
+						</peer-groups>
+						<neighbors>
+							<neighbor>
+								<neighbor-address>172.16.255.2</neighbor-address>
+								<config>
+									<neighbor-address>172.16.255.2</neighbor-address>
+									<peer-group>IBGP</peer-group>
+								</config>
 							</neighbor>
 						</neighbors>
 					</bgp>
 				</protocol>
-				<protocol>
-					<identifier xmlns:idx="http://openconfig.net/yang/policy-types">idx:STATIC</identifier>
-					<name>DEFAULT</name>
-					<config>
-						<identifier xmlns:idx="http://openconfig.net/yang/policy-types">idx:STATIC</identifier>
-						<name>DEFAULT</name>
-					</config>
-					<static-routes>
-						<static>
-							<prefix>0.0.0.0/0</prefix>
-							<config>
-								<prefix>0.0.0.0/0</prefix>
-							</config>
-							<next-hops>
-								<next-hop>
-									<index>**10.0.2.2**</index>
-									<config>
-										<index>**10.0.2.2**</index>
-										<next-hop>10.0.2.2</next-hop>
-									</config>
-								</next-hop>
-							</next-hops>
-						</static>
-						<static>
-							<prefix>1.2.3.5/32</prefix>
-							<config>
-								<prefix>1.2.3.5/32</prefix>
-							</config>
-							<next-hops>
-								<next-hop>
-									<index>**10.0.2.2**</index>
-									<config>
-										<index>**10.0.2.2**</index>
-										<next-hop>10.0.2.2</next-hop>
-									</config>
-								</next-hop>
-							</next-hops>
-						</static>
-					</static-routes>
-				</protocol>
 			</protocols>
 		</network-instance>
 	</network-instances>
+	<bgp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-bgp-cfg">
+		<instance>
+			<instance-name>default</instance-name>
+			<instance-as>
+				<as>0</as>
+				<four-byte-as>
+					<as>65001</as>
+					<bgp-running></bgp-running>
+					<default-vrf>
+						<global>
+							<global-afs>
+								<global-af>
+									<af-name>ipv4-unicast</af-name>
+									<enable></enable>
+								</global-af>
+							</global-afs>
+						</global>
+						<bgp-entity>
+							<neighbor-groups>
+								<neighbor-group>
+									<neighbor-group-name>IBGP</neighbor-group-name>
+									<create></create>
+									<remote-as>
+										<as-xx>0</as-xx>
+										<as-yy>65001</as-yy>
+									</remote-as>
+									<update-source-interface>Loopback0</update-source-interface>
+									<neighbor-group-afs>
+										<neighbor-group-af>
+											<af-name>ipv4-unicast</af-name>
+											<activate></activate>
+										</neighbor-group-af>
+									</neighbor-group-afs>
+								</neighbor-group>
+							</neighbor-groups>
+							<neighbors>
+								<neighbor>
+									<neighbor-address>172.16.255.2</neighbor-address>
+									<neighbor-group-add-member>IBGP</neighbor-group-add-member>
+								</neighbor>
+							</neighbors>
+						</bgp-entity>
+					</default-vrf>
+				</four-byte-as>
+			</instance-as>
+		</instance>
+	</bgp>
 </config>
 
-
 ```
-
-
-Similarly, the corresponding json file created is:  
-(Use this file for configuration over gRPC)
-
-
-
-```json
-admin@devbox:cli2yang-tools$ cat yang_grpc.json 
-{
-    "Cisco-IOS-XR-tty-server-cfg:tty": {
-        "tty-lines": {
-            "tty-line": [
-                {
-                    "name": "console",
-                    "exec": {
-                        "timeout": {
-                            "seconds": 0,
-                            "minutes": 0
-                        },
-                        "time-stamp": false
-                    }
-                }
-            ]
-        }
-    },
-    "openconfig-network-instance:network-instances": {
-        "network-instance": [
-            {
-                "name": "default",
-                "protocols": {
-                    "protocol": [
-                        {
-                            "name": "DEFAULT",
-                            "config": {
-                                "name": "DEFAULT",
-                                "identifier": "openconfig-policy-types:STATIC"
-                            },
-                            "static-routes": {
-                                "static": [
-                                    {
-                                        "config": {
-                                            "prefix": "0.0.0.0/0"
-                                        },
-                                        "prefix": "0.0.0.0/0",
-                                        "next-hops": {
-                                            "next-hop": [
-                                                {
-                                                    "config": {
-                                                        "next-hop": "10.0.2.2",
-                                                        "index": "**10.0.2.2**"
-                                                    },
-                                                    "index": "**10.0.2.2**"
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    {
-                                        "config": {
-                                            "prefix": "1.2.3.5/32"
-                                        },
-                                        "prefix": "1.2.3.5/32",
-                                        "next-hops": {
-                                            "next-hop": [
-                                                {
-                                                    "config": {
-                                                        "next-hop": "10.0.2.2",
-                                                        "index": "**10.0.2.2**"
-                                                    },
-                                                    "index": "**10.0.2.2**"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                ]
-                            },
-                            "identifier": "openconfig-policy-types:STATIC"
-                        },
-                        {
-                            "name": "default",
-                            "config": {
-                                "name": "default",
-                                "identifier": "openconfig-policy-types:BGP"
-                            },
-                            "bgp": {
-                                "global": {
-                                    "afi-safis": {
-                                        "afi-safi": [
-                                            {
-                                                "config": {
-                                                    "afi-safi-name": "IPV4_UNICAST",
-                                                    "enabled": true
-                                                },
-                                                "afi-safi-name": "IPV4_UNICAST"
-                                            }
-                                        ]
-                                    },
-                                    "config": {
-                                        "router-id": "11.1.1.10",
-                                        "as": 65400
-                                    }
-                                },
-                                "neighbors": {
-                                    "neighbor": [
-                                        {
-                                            "config": {
-                                                "neighbor-address": "11.1.1.20",
-                                                "peer-as": 65450
-                                            },
-                                            "afi-safis": {
-                                                "afi-safi": [
-                                                    {
-                                                        "config": {
-                                                            "afi-safi-name": "IPV4_UNICAST",
-                                                            "enabled": true
-                                                        },
-                                                        "afi-safi-name": "IPV4_UNICAST"
-                                                    }
-                                                ]
-                                            },
-                                            "neighbor-address": "11.1.1.20"
-                                        }
-                                    ]
-                                }
-                            },
-                            "identifier": "openconfig-policy-types:BGP"
-                        }
-                    ]
-                },
-                "config": {
-                    "name": "default"
-                }
-            }
-        ]
-    },
-    "Cisco-IOS-XR-man-netconf-cfg:netconf-yang": {
-        "agent": {
-            "ssh": {
-                "enable": [
-                    null
-                ]
-            }
-        }
-    },
-    "openconfig-lacp:lacp": {
-        "interfaces": {
-            "interface": [
-                {
-                    "name": "MgmtEth0/RP0/CPU0/0",
-                    "config": {
-                        "name": "MgmtEth0/RP0/CPU0/0"
-                    }
-                },
-                {
-                    "name": "GigabitEthernet0/0/0/0",
-                    "config": {
-                        "name": "GigabitEthernet0/0/0/0"
-                    }
-                },
-                {
-                    "name": "GigabitEthernet0/0/0/1",
-                    "config": {
-                        "name": "GigabitEthernet0/0/0/1"
-                    }
-                },
-                {
-                    "name": "GigabitEthernet0/0/0/2",
-                    "config": {
-                        "name": "GigabitEthernet0/0/0/2"
-                    }
-                },
-                {
-                    "name": "GigabitEthernet0/0/0/3",
-                    "config": {
-                        "name": "GigabitEthernet0/0/0/3"
-                    }
-                },
-                {
-                    "name": "GigabitEthernet0/0/0/4",
-                    "config": {
-                        "name": "GigabitEthernet0/0/0/4"
-                    }
-                }
-            ]
-        }
-    },
-    "Cisco-IOS-XR-ifmgr-cfg:interface-configurations": {
-        "interface-configuration": [
-            {
-                "description": "*** MANAGEMENT INTERFACE ***",
-                "interface-name": "MgmtEth0/RP0/CPU0/0",
-                "active": "act",
-                "Cisco-IOS-XR-ipv4-io-cfg:ipv4-network": {
-                    "addresses": {
-                        "dhcp": {
-                            "pattern": "MgmtEth0_RP0_CPU0_0",
-                            "enabled": [
-                                null
-                            ]
-                        }
-                    }
-                }
-            },
-            {
-                "Cisco-IOS-XR-ipv6-ma-cfg:ipv6-network": {
-                    "addresses": {
-                        "auto-configuration": {
-                            "enable": [
-                                null
-                            ]
-                        },
-                        "regular-addresses": {
-                            "regular-address": [
-                                {
-                                    "address": "1010:1010::10",
-                                    "zone": "0",
-                                    "prefix-length": 64
-                                }
-                            ]
-                        }
-                    }
-                },
-                "interface-name": "GigabitEthernet0/0/0/0",
-                "active": "act"
-            },
-            {
-                "Cisco-IOS-XR-ipv6-ma-cfg:ipv6-network": {
-                    "addresses": {
-                        "auto-configuration": {
-                            "enable": [
-                                null
-                            ]
-                        },
-                        "regular-addresses": {
-                            "regular-address": [
-                                {
-                                    "address": "2020:2020::10",
-                                    "zone": "0",
-                                    "prefix-length": 64
-                                }
-                            ]
-                        }
-                    }
-                },
-                "interface-name": "GigabitEthernet0/0/0/1",
-                "active": "act"
-            },
-            {
-                "shutdown": [
-                    null
-                ],
-                "interface-name": "GigabitEthernet0/0/0/2",
-                "active": "act"
-            },
-            {
-                "shutdown": [
-                    null
-                ],
-                "interface-name": "GigabitEthernet0/0/0/3",
-                "active": "act"
-            },
-            {
-                "shutdown": [
-                    null
-                ],
-                "interface-name": "GigabitEthernet0/0/0/4",
-                "active": "act"
-            }
-        ]
-    },
-    "Cisco-IOS-XR-ipv4-bgp-cfg:bgp": {
-        "instance": [
-            {
-                "instance-as": [
-                    {
-                        "as": 0,
-                        "four-byte-as": [
-                            {
-                                "bgp-running": [
-                                    null
-                                ],
-                                "as": 65400,
-                                "default-vrf": {
-                                    "global": {
-                                        "router-id": "11.1.1.10",
-                                        "global-afs": {
-                                            "global-af": [
-                                                {
-                                                    "enable": [
-                                                        null
-                                                    ],
-                                                    "af-name": "ipv4-unicast",
-                                                    "sourced-networks": {
-                                                        "sourced-network": [
-                                                            {
-                                                                "network-prefix": 24,
-                                                                "network-addr": "11.1.1.0"
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    "bgp-entity": {
-                                        "neighbors": {
-                                            "neighbor": [
-                                                {
-                                                    "neighbor-address": "11.1.1.20",
-                                                    "neighbor-afs": {
-                                                        "neighbor-af": [
-                                                            {
-                                                                "activate": [
-                                                                    null
-                                                                ],
-                                                                "af-name": "ipv4-unicast",
-                                                                "next-hop-self": true
-                                                            }
-                                                        ]
-                                                    },
-                                                    "remote-as": {
-                                                        "as-xx": 0,
-                                                        "as-yy": 65450
-                                                    }
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            }
-                        ]
-                    }
-                ],
-                "instance-name": "default"
-            }
-        ]
-    },
-    "Cisco-IOS-XR-sysadmin-fpd-infra-cli-fpd:fpd": {
-        "config": {
-            "auto-upgrade": "disable"
-        }
-    },
-    "openconfig-interfaces:interfaces": {
-        "interface": [
-            {
-                "name": "MgmtEth0/RP0/CPU0/0",
-                "config": {
-                    "name": "MgmtEth0/RP0/CPU0/0",
-                    "type": "iana-if-type:ethernetCsmacd",
-                    "description": "*** MANAGEMENT INTERFACE ***",
-                    "enabled": true
-                },
-                "openconfig-if-ethernet:ethernet": {
-                    "config": {
-                        "auto-negotiate": false
-                    }
-                }
-            },
-            {
-                "name": "GigabitEthernet0/0/0/0",
-                "subinterfaces": {
-                    "subinterface": [
-                        {
-                            "openconfig-if-ip:ipv6": {
-                                "addresses": {
-                                    "address": [
-                                        {
-                                            "config": {
-                                                "prefix-length": 64,
-                                                "ip": "1010:1010::10"
-                                            },
-                                            "ip": "1010:1010::10"
-                                        }
-                                    ]
-                                },
-                                "config": {
-                                    "enabled": true
-                                }
-                            },
-                            "index": 0
-                        }
-                    ]
-                },
-                "config": {
-                    "name": "GigabitEthernet0/0/0/0",
-                    "type": "iana-if-type:ethernetCsmacd",
-                    "enabled": true
-                },
-                "openconfig-if-ethernet:ethernet": {
-                    "config": {
-                        "auto-negotiate": false
-                    }
-                }
-            },
-            {
-                "name": "GigabitEthernet0/0/0/1",
-                "subinterfaces": {
-                    "subinterface": [
-                        {
-                            "openconfig-if-ip:ipv6": {
-                                "addresses": {
-                                    "address": [
-                                        {
-                                            "config": {
-                                                "prefix-length": 64,
-                                                "ip": "2020:2020::10"
-                                            },
-                                            "ip": "2020:2020::10"
-                                        }
-                                    ]
-                                },
-                                "config": {
-                                    "enabled": true
-                                }
-                            },
-                            "index": 0
-                        }
-                    ]
-                },
-                "config": {
-                    "name": "GigabitEthernet0/0/0/1",
-                    "type": "iana-if-type:ethernetCsmacd",
-                    "enabled": true
-                },
-                "openconfig-if-ethernet:ethernet": {
-                    "config": {
-                        "auto-negotiate": false
-                    }
-                }
-            },
-            {
-                "name": "GigabitEthernet0/0/0/2",
-                "config": {
-                    "name": "GigabitEthernet0/0/0/2",
-                    "type": "iana-if-type:ethernetCsmacd",
-                    "enabled": false
-                },
-                "openconfig-if-ethernet:ethernet": {
-                    "config": {
-                        "auto-negotiate": false
-                    }
-                }
-            },
-            {
-                "name": "GigabitEthernet0/0/0/3",
-                "config": {
-                    "name": "GigabitEthernet0/0/0/3",
-                    "type": "iana-if-type:ethernetCsmacd",
-                    "enabled": false
-                },
-                "openconfig-if-ethernet:ethernet": {
-                    "config": {
-                        "auto-negotiate": false
-                    }
-                }
-            },
-            {
-                "name": "GigabitEthernet0/0/0/4",
-                "config": {
-                    "name": "GigabitEthernet0/0/0/4",
-                    "type": "iana-if-type:ethernetCsmacd",
-                    "enabled": false
-                },
-                "openconfig-if-ethernet:ethernet": {
-                    "config": {
-                        "auto-negotiate": false
-                    }
-                }
-            }
-        ]
-    },
-    "Cisco-IOS-XR-tty-vty-cfg:vty": {
-        "vty-pools": {
-            "vty-pool": [
-                {
-                    "line-template": "VTY-TEMPLATE",
-                    "first-vty": 0,
-                    "last-vty": 4,
-                    "pool-name": "default"
-                }
-            ]
-        }
-    },
-    "Cisco-IOS-XR-shellutil-cfg:host-names": {
-        "host-name": "r1"
-    },
-    "Cisco-IOS-XR-aaa-lib-cfg:aaa": {
-        "Cisco-IOS-XR-aaa-locald-cfg:usernames": {
-            "username": [
-                {
-                    "name": "admin",
-                    "secret": "$1$A4C9$oaNorr6BXDruE4gDd086L.",
-                    "usergroup-under-usernames": {
-                        "usergroup-under-username": [
-                            {
-                                "name": "root-lr"
-                            },
-                            {
-                                "name": "cisco-support"
-                            }
-                        ]
-                    },
-                    "ordering-index": 0
-                }
-            ]
-        }
-    },
-    "Cisco-IOS-XR-crypto-ssh-cfg:ssh": {
-        "server": {
-            "netconf-vrf-table": {
-                "vrf": [
-                    {
-                        "enable": [
-                            null
-                        ],
-                        "vrf-name": "default"
-                    }
-                ]
-            },
-            "v2": [
-                null
-            ]
-        }
-    },
-    "openconfig-telemetry:telemetry-system": {
-        "subscriptions": {
-            "persistent": {
-                "subscription": [
-                    {
-                        "subscription-id": "IPV6",
-                        "sensor-profiles": {
-                            "sensor-profile": [
-                                {
-                                    "sensor-group": "IPV6Neighbor",
-                                    "config": {
-                                        "sensor-group": "IPV6Neighbor",
-                                        "sample-interval": "15000"
-                                    }
-                                }
-                            ]
-                        },
-                        "config": {
-                            "subscription-id": "IPV6"
-                        }
-                    },
-                    {
-                        "subscription-id": "Sub1",
-                        "sensor-profiles": {
-                            "sensor-profile": [
-                                {
-                                    "sensor-group": "SGroup1",
-                                    "config": {
-                                        "sensor-group": "SGroup1",
-                                        "sample-interval": "30000"
-                                    }
-                                }
-                            ]
-                        },
-                        "config": {
-                            "subscription-id": "Sub1"
-                        },
-                        "destination-groups": {
-                            "destination-group": [
-                                {
-                                    "config": {
-                                        "group-id": "DGroup1"
-                                    },
-                                    "group-id": "DGroup1"
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        },
-        "sensor-groups": {
-            "sensor-group": [
-                {
-                    "sensor-paths": {
-                        "sensor-path": [
-                            {
-                                "path": "Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters",
-                                "config": {
-                                    "path": "Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters"
-                                }
-                            }
-                        ]
-                    },
-                    "config": {
-                        "sensor-group-id": "SGroup1"
-                    },
-                    "sensor-group-id": "SGroup1"
-                },
-                {
-                    "sensor-paths": {
-                        "sensor-path": [
-                            {
-                                "path": "Cisco-IOS-XR-ipv6-nd-oper:ipv6-node-discovery/nodes/node/neighbor-interfaces/neighbor-interface/host-addresses/host-address",
-                                "config": {
-                                    "path": "Cisco-IOS-XR-ipv6-nd-oper:ipv6-node-discovery/nodes/node/neighbor-interfaces/neighbor-interface/host-addresses/host-address"
-                                }
-                            }
-                        ]
-                    },
-                    "config": {
-                        "sensor-group-id": "IPV6Neighbor"
-                    },
-                    "sensor-group-id": "IPV6Neighbor"
-                }
-            ]
-        },
-        "destination-groups": {
-            "destination-group": [
-                {
-                    "destinations": {
-                        "destination": [
-                            {
-                                "destination-port": 5432,
-                                "config": {
-                                    "destination-port": 5432,
-                                    "destination-protocol": "TCP",
-                                    "destination-address": "192.168.122.11"
-                                },
-                                "destination-address": "192.168.122.11"
-                            }
-                        ]
-                    },
-                    "config": {
-                        "group-id": "DGroup1"
-                    },
-                    "group-id": "DGroup1"
-                }
-            ]
-        }
-    },
-    "Cisco-IOS-XR-infra-syslog-cfg:syslog": {
-        "console-logging": {
-            "logging-level": "debug"
-        }
-    },
-    "Cisco-IOS-XR-man-ems-cfg:grpc": {
-        "port": 57777,
-        "service-layer": {
-            "enable": [
-                null
-            ]
-        },
-        "enable": [
-            null
-        ],
-        "no-tls": [
-            null
-        ]
-    },
-    "Cisco-IOS-XR-ip-static-cfg:router-static": {
-        "default-vrf": {
-            "address-family": {
-                "vrfipv4": {
-                    "vrf-unicast": {
-                        "vrf-prefixes": {
-                            "vrf-prefix": [
-                                {
-                                    "vrf-route": {
-                                        "vrf-next-hop-table": {
-                                            "vrf-next-hop-next-hop-address": [
-                                                {
-                                                    "next-hop-address": "10.0.2.2"
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    "prefix-length": 0,
-                                    "prefix": "0.0.0.0"
-                                },
-                                {
-                                    "vrf-route": {
-                                        "vrf-next-hop-table": {
-                                            "vrf-next-hop-next-hop-address": [
-                                                {
-                                                    "next-hop-address": "10.0.2.2"
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    "prefix-length": 32,
-                                    "prefix": "1.2.3.5"
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        }
-    },
-    "Cisco-IOS-XR-telemetry-model-driven-cfg:telemetry-model-driven": {
-        "enable": [
-            null
-        ],
-        "subscriptions": {
-            "subscription": [
-                {
-                    "sensor-profiles": {
-                        "sensor-profile": [
-                            {
-                                "sample-interval": 15000,
-                                "sensorgroupid": "IPV6Neighbor"
-                            }
-                        ]
-                    },
-                    "subscription-identifier": "IPV6"
-                },
-                {
-                    "destination-profiles": {
-                        "destination-profile": [
-                            {
-                                "destination-id": "DGroup1"
-                            }
-                        ]
-                    },
-                    "sensor-profiles": {
-                        "sensor-profile": [
-                            {
-                                "sample-interval": 30000,
-                                "sensorgroupid": "SGroup1"
-                            }
-                        ]
-                    },
-                    "subscription-identifier": "Sub1"
-                }
-            ]
-        },
-        "sensor-groups": {
-            "sensor-group": [
-                {
-                    "sensor-paths": {
-                        "sensor-path": [
-                            {
-                                "telemetry-sensor-path": "Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters"
-                            }
-                        ]
-                    },
-                    "sensor-group-identifier": "SGroup1"
-                },
-                {
-                    "sensor-paths": {
-                        "sensor-path": [
-                            {
-                                "telemetry-sensor-path": "Cisco-IOS-XR-ipv6-nd-oper:ipv6-node-discovery/nodes/node/neighbor-interfaces/neighbor-interface/host-addresses/host-address"
-                            }
-                        ]
-                    },
-                    "sensor-group-identifier": "IPV6Neighbor"
-                }
-            ]
-        },
-        "destination-groups": {
-            "destination-group": [
-                {
-                    "ipv4-destinations": {
-                        "ipv4-destination": [
-                            {
-                                "destination-port": 5432,
-                                "protocol": {
-                                    "no-tls": 1,
-                                    "protocol": "tcp"
-                                },
-                                "ipv4-address": "192.168.122.11",
-                                "encoding": "self-describing-gpb"
-                            }
-                        ]
-                    },
-                    "destination-id": "DGroup1"
-                }
-            ]
-        }
-    },
-    "Cisco-IOS-XR-sysadmin-services:service": {
-        "cli": {
-            "interactive": {
-                "enabled": true
-            }
-        }
-    },
-    "Cisco-IOS-XR-call-home-cfg:call-home": {
-        "contact-smart-licensing": true,
-        "profiles": {
-            "profile": [
-                {
-                    "profile-name": "CiscoTAC-1",
-                    "active": [
-                        null
-                    ],
-                    "create": [
-                        null
-                    ],
-                    "methods": {
-                        "method": [
-                            {
-                                "enable": false,
-                                "method": "email"
-                            },
-                            {
-                                "enable": true,
-                                "method": "http"
-                            }
-                        ]
-                    }
-                }
-            ]
-        },
-        "active": [
-            null
-        ]
-    },
-    "Cisco-IOS-XR-infra-syslog-cfg:syslog-service": {
-        "timestamps": {
-            "log": {
-                "log-datetime": {
-                    "log-datetime-value": {
-                        "msec": "enable"
-                    }
-                }
-            },
-            "debug": {
-                "debug-datetime": {
-                    "datetime-value": {
-                        "msec": "enable"
-                    }
-                }
-            }
-        }
-    },
-    "Cisco-IOS-XR-infra-infra-cfg:banners": {
-        "banner": [
-            {
-                "banner-text": ";\n--------------------------------------------------------------------------\n  Router 1 (Cisco IOS XR Sandbox)\n--------------------------------------------------------------------------\n;",
-                "banner-name": "motd"
-            }
-        ]
-    }
-}
-
-
-```
-
-
-Massage the files to extract the content you need and start migrating your CLI configs to YANG today!
-
-
-
