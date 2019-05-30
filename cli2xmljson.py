@@ -39,6 +39,9 @@ from cisco_grpc_client import CiscoGRPCClient
 def getFromDict(dataDict, mapList):
     return reduce(operator.getitem, mapList, dataDict)
 
+def setInDict(dataDict, mapList, value):
+    getFromDict(dataDict, mapList[:-1])[mapList[-1]] = value
+
 def changeInDict(dataDict, mapList, keyToChange, value):
 
     tempDict = dataDict
@@ -279,7 +282,8 @@ class YangCLIClient(object):
             print("No bash command provided")
             return {"status" : "error", "output" : ""}
 
-        ssh_cmd = "ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrcmd \\\""+show_cmd+"\\\" 2>/dev/null\'\""
+        ssh_cmd = "sshpass -p "+self.password+" ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrcmd \\\""+show_cmd+"\\\" 2>/dev/null\'\""
+        print ssh_cmd
         show_output = self.run_bash(cmd=ssh_cmd)
 
         if show_output["status"]:
@@ -302,7 +306,8 @@ class YangCLIClient(object):
 
         filename = os.path.basename(config_file)
 
-        transfer_file_cmd = "scp -P "+self.xr_lnx_ssh_port+ " -o StrictHostKeyChecking=no  "+config_file+" "+self.username+"@"+self.host+":/misc/scratch/"+filename
+        transfer_file_cmd = "sshpass -p "+self.password+" scp -P "+self.xr_lnx_ssh_port+ " -o StrictHostKeyChecking=no  "+config_file+" "+self.username+"@"+self.host+":/misc/app_host/scratch/"+filename
+        print transfer_file_cmd
         transfer_file = self.run_bash(transfer_file_cmd)
 
         if transfer_file["status"]:
@@ -310,7 +315,9 @@ class YangCLIClient(object):
             return {"status" : "error", "output" : ""}
 
         #Now apply
-        ssh_cmd = "ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrapply /misc/scratch/"+filename+"\'\""
+        ssh_cmd = "sshpass -p "+self.password+" ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrapply /misc/app_host/scratch/"+filename+"\'\""
+
+        print ssh_cmd
         xrapply_output = self.run_bash(cmd=ssh_cmd)
         
         if xrapply_output["status"]:
@@ -336,7 +343,9 @@ class YangCLIClient(object):
 
         filename = os.path.basename(config_file)
 
-        transfer_file_cmd = "scp -P "+self.xr_lnx_ssh_port+ " -o StrictHostKeyChecking=no "+config_file+" "+self.username+"@"+self.host+":/misc/scratch/"+filename
+        transfer_file_cmd = "sshpass -p "+self.password+" scp -P "+self.xr_lnx_ssh_port+ " -o StrictHostKeyChecking=no "+config_file+" "+self.username+"@"+self.host+":/misc/app_host/scratch/"+filename
+
+        print transfer_file_cmd
         transfer_file = self.run_bash(transfer_file_cmd)
 
         if transfer_file["status"]:
@@ -344,8 +353,9 @@ class YangCLIClient(object):
             return {"status" : "error", "output" : ""}
 
         #Now replace 
-        ssh_cmd = "ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrreplace /misc/scratch/"+filename+" \'\""
-            
+        ssh_cmd = "sshpass -p "+self.password+" ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrreplace /misc/app_host/scratch/"+filename+" \'\""
+
+        print ssh_cmd            
         xrreplace_output = self.run_bash(cmd=ssh_cmd)
 
         if xrreplace_output["status"]:
@@ -701,6 +711,7 @@ if __name__ == '__main__':
     xml_dict = OrderedDict()
 
 
+
     if 'dictionary_item_added' in client.netconf_diff:
         dict_items = list(client.netconf_diff['dictionary_item_added'])
 
@@ -718,6 +729,7 @@ if __name__ == '__main__':
             dict_path.update(getTreeFromDictPath(dict_to_modify, item_key_list))
 
             xml_dict.update(dict_path['config'])
+
 
     if 'iterable_item_added' in client.netconf_diff:
         iterable_items = list(client.netconf_diff['iterable_item_added'])
@@ -767,6 +779,29 @@ if __name__ == '__main__':
             values_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list[:-1]))
 
             xml_dict.update(values_dict['config'])
+
+
+    if 'type_changes' in client.netconf_diff:
+        values_dict = OrderedDict()
+
+        for item in client.netconf_diff['type_changes']:
+            new_item_type = client.netconf_diff['type_changes'][item]['new_type'] 
+            new_item_value = client.netconf_diff['type_changes'][item]['new_value'] 
+
+            item_keys = item[item.startswith("root") and len("root"):]
+            item_keys = item_keys.strip('[]').replace('][',',')
+            item_key_list = item_keys.split(',')
+            item_key_list = [i.replace('\'', '') for i in item_key_list]
+
+            
+            dict_to_modify = copy.deepcopy(client.nc_dict)
+            setInDict(dict_to_modify, item_key_list, new_item_value)
+
+            values_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list[:-1]))
+
+            xml_dict.update(values_dict['config'])
+
+
    
     xml_dict = OrderedDict([('config', xml_dict)]) 
     if client.debug:
