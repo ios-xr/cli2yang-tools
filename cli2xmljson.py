@@ -759,7 +759,7 @@ if __name__ == '__main__':
   
             dict_to_modify = copy.deepcopy(client.nc_dict)
    
-            iterable_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list[:-1]))
+            iterable_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list))
 
             changeInDict(iterable_dict, item_key_list[:-1], item_key_list[-1], list_dict[('_').join(item_key_list)])
             xml_dict.update(iterable_dict['config'])
@@ -776,7 +776,7 @@ if __name__ == '__main__':
             item_key_list = [i.replace('\'', '') for i in item_key_list]
 
             dict_to_modify = copy.deepcopy(client.nc_dict)
-            values_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list[:-1]))
+            values_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list))
 
             xml_dict.update(values_dict['config'])
 
@@ -797,7 +797,7 @@ if __name__ == '__main__':
             dict_to_modify = copy.deepcopy(client.nc_dict)
             setInDict(dict_to_modify, item_key_list, new_item_value)
 
-            values_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list[:-1]))
+            values_dict.update(getTreeFromDictPath(dict_to_modify, item_key_list))
 
             xml_dict.update(values_dict['config'])
 
