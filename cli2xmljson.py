@@ -7,6 +7,9 @@ from deepdiff import DeepDiff
 import sys, os
 import warnings
 
+import warnings
+warnings.filterwarnings(action='ignore',module='.*paramiko.*')
+
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
     import md5, sha
@@ -283,7 +286,10 @@ class YangCLIClient(object):
             return {"status" : "error", "output" : ""}
 
         ssh_cmd = "sshpass -p "+self.password+" ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrcmd \\\""+show_cmd+"\\\" 2>/dev/null\'\""
-        print ssh_cmd
+
+        if self.debug:
+          print ssh_cmd
+
         show_output = self.run_bash(cmd=ssh_cmd)
 
         if show_output["status"]:
@@ -307,7 +313,10 @@ class YangCLIClient(object):
         filename = os.path.basename(config_file)
 
         transfer_file_cmd = "sshpass -p "+self.password+" scp -P "+self.xr_lnx_ssh_port+ " -o StrictHostKeyChecking=no  "+config_file+" "+self.username+"@"+self.host+":/misc/app_host/scratch/"+filename
-        print transfer_file_cmd
+
+        if self.debug:
+           print transfer_file_cmd
+
         transfer_file = self.run_bash(transfer_file_cmd)
 
         if transfer_file["status"]:
@@ -317,7 +326,9 @@ class YangCLIClient(object):
         #Now apply
         ssh_cmd = "sshpass -p "+self.password+" ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrapply /misc/app_host/scratch/"+filename+"\'\""
 
-        print ssh_cmd
+        if self.debug:
+          print ssh_cmd
+
         xrapply_output = self.run_bash(cmd=ssh_cmd)
         
         if xrapply_output["status"]:
@@ -345,7 +356,9 @@ class YangCLIClient(object):
 
         transfer_file_cmd = "sshpass -p "+self.password+" scp -P "+self.xr_lnx_ssh_port+ " -o StrictHostKeyChecking=no "+config_file+" "+self.username+"@"+self.host+":/misc/app_host/scratch/"+filename
 
-        print transfer_file_cmd
+        if self.debug:
+          print transfer_file_cmd
+
         transfer_file = self.run_bash(transfer_file_cmd)
 
         if transfer_file["status"]:
@@ -355,7 +368,9 @@ class YangCLIClient(object):
         #Now replace 
         ssh_cmd = "sshpass -p "+self.password+" ssh -o StrictHostKeyChecking=no -p "+self.xr_lnx_ssh_port+ " " +self.username+"@"+self.host+" \"sudo /bin/bash -c \'source /pkg/bin/ztp_helper.sh &&  xrreplace /misc/app_host/scratch/"+filename+" \'\""
 
-        print ssh_cmd            
+        if self.debug:
+          print ssh_cmd 
+           
         xrreplace_output = self.run_bash(cmd=ssh_cmd)
 
         if xrreplace_output["status"]:
@@ -385,7 +400,7 @@ class YangCLIClient(object):
            # s = set(candidate.keys())
            # self.grpc_diff = [x for x in  base.keys() if x not in s]
            #self.grpc_diff
-           print "Skipping.."
+           print " gRPC not supported in this version of code, Skipping.."
         elif (protocol == "netconf"):
            base = self.nc_dict_base
            candidate = self.nc_dict
@@ -645,8 +660,12 @@ if __name__ == '__main__':
                         help='Test config merge with each output file')
         parser.add_argument('-x', '--nc-xml-file', action='store', dest='nc_xml_file',
                         help='Specify output file path for netconf based XML output ')
+        parser.add_argument('-v', '--verbose', action='store_true', dest='verbose',
+                        help='Enable verbose logging  - useful for debugging ncclient RPCs')
         parser.add_argument('-j', '--grpc-json-file', action='store', dest='grpc_json_file',
                         help='Specify output file path for gRPC based JSON output')
+        parser.add_argument('-o', '--openconfig', action='store_true', dest='openconfig',
+                        help='Enable translation of CLI into openconfig model - by default it is off. This is done because not all XR platforms respond with Openconfig equivalent in GET requests but do respond with Native model formats. Also some Openconfig models have been in flux and testing the models sometimes fails. \n If it works, try the -o flag along with the -t flag. If test fails, use the -o flag without the -t flag to atleast get the openconfig equivalent where possible. Else skip the -o flag altogether.')
 
     except SystemExit:
         print("Invalid arguments provided, Error: " + str(sys.exc_info()[1]))
@@ -664,6 +683,8 @@ if __name__ == '__main__':
              results.username or
              results.password or
              results.debug or
+             results.openconfig or
+             results.verbose or
              results.test):
         parser.print_help()
         sys.exit(0)
@@ -673,6 +694,15 @@ if __name__ == '__main__':
         rootLogger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler()
         rootLogger.addHandler(handler)        
+
+    if results.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    if results.openconfig:
+        enable_openconfig = True
+        print("WARNING: not all XR platforms respond with Openconfig equivalent in GET requests but do respond with Native model formats. Also some Openconfig models have been in flux and testing the models sometimes fails. \n If it works, try the -o flag along with the -t flag. If test fails, use the -o flag without the -t flag to atleast get the openconfig equivalent where possible. Else skip the -o flag altogether.")
+    else:
+        enable_openconfig = False
 
     if results.nc_xml_file:
         nc_xml_file=results.nc_xml_file
@@ -802,13 +832,43 @@ if __name__ == '__main__':
             xml_dict.update(values_dict['config'])
 
 
-   
+
+    if not enable_openconfig:
+        for key in list(xml_dict.keys()):
+            if isinstance(xml_dict[key], list):
+                index_cnt = 0
+                for index in xml_dict[key]:
+                    if "http://openconfig" in index['@xmlns']:
+                        popped_openconfig_model = xml_dict[key].pop(index_cnt)
+                        if client.debug:
+                            print("Openconfig enable flag is not set (-o), popping the following model out")
+                            popped_openconfig_xml = OrderedDict([(key, popped_openconfig_model)])
+                            print(xmltodict.unparse(popped_openconfig_xml, pretty=True))
+                    index_cnt=index_cnt+1
+            else:
+                if "http://openconfig" in xml_dict[key]['@xmlns']:
+                    try:
+                        popped_openconfig_model = xml_dict.pop(key)
+                        if client.debug:
+                            print("Openconfig enable flag is not set (-o), popping the following model out")
+                            popped_openconfig_xml = OrderedDict([(key, popped_openconfig_model)])
+                            print(xmltodict.unparse(popped_openconfig_xml, pretty=True))
+                    except Exception as e:
+                        print("Failed to pop openconfig model, error is")
+                        print(e)
+
+    # Bail out if xml_dict is empty which implies there is no diff and the input cli string is already part of base config
+    if not len(list(xml_dict.keys())):
+        print("The diff is empty implying that the input cli snippet is already part of base config. Please check your inputs.")
+        sys.exit(1)
+
     xml_dict = OrderedDict([('config', xml_dict)]) 
-    if client.debug:
-        print("##################################################")
-        print("YANG XML version of the input CLI configuration:")
-        print("##################################################")
-        print(xmltodict.unparse(xml_dict, pretty=True))
+     
+ 
+    print("##################################################")
+    print("YANG XML version of the input CLI configuration:")
+    print("##################################################")
+    print(xmltodict.unparse(xml_dict, pretty=True))
 
 
     print("Testing the generated YANG XML by doing a merge config....")
