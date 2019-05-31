@@ -62,6 +62,8 @@ Generating Python bindings...+ python -m grpc_tools.protoc -I ./ --python_out=/h
 + set +x
 Done
 admin@devbox:cli2yang-tools$ 
+```
+
 
 ## Converting CLI configuration to YANG XML
 
