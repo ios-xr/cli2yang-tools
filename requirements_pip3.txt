@@ -1,5 +1,5 @@
 deepdiff==3.3.0
-grpcio==1.7.0
+grpcio==1.53.0
 xmltodict
 xmldiff
 ncclient
